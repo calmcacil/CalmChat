@@ -77,6 +77,9 @@ function SlashCmdList.SETUPCHAT()
     if not retail and GetLocale() == 'enUS' then
         JoinPermanentChannel('LookingForGroup')
         ChatFrame_AddChannel(_G.ChatFrame1, 'LookingForGroup')
+        
+    end
+    if retail then
         ChatFrame_AddMessageGroup(_G.ChatFrame1, 'PING')
     end
 
