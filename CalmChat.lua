@@ -19,7 +19,9 @@ function SlashCmdList.SETUPCHAT()
 
     -- Create new tabs
     FCF_OpenNewWindow()
+    if retail then
     FCF_OpenNewWindow()
+    end
 
     -- Rename and color all tabs
     for _, name in ipairs(_G.CHAT_FRAMES) do
@@ -65,14 +67,6 @@ function SlashCmdList.SETUPCHAT()
         ChatFrame_AddMessageGroup(_G.ChatFrame4, k)
     end
 
-    -- Setup Services tab
-    chats = {}
-    ChatFrame_RemoveAllMessageGroups(_G.ChatFrame5)
-    ChatFrame_AddChannel(_G.ChatFrame5, "Services")
-    for _, k in ipairs(chats) do
-        ChatFrame_AddMessageGroup(_G.ChatFrame5, k)
-    end
-
     -- Join LFG channel in Classic and TBC (English client only)
     if not retail and GetLocale() == 'enUS' then
         JoinPermanentChannel('LookingForGroup')
@@ -80,6 +74,13 @@ function SlashCmdList.SETUPCHAT()
         
     end
     if retail then
+        -- Setup Services tab
+        chats = {}
+        ChatFrame_RemoveAllMessageGroups(_G.ChatFrame5)
+        ChatFrame_AddChannel(_G.ChatFrame5, "Services")
+        for _, k in ipairs(chats) do
+            ChatFrame_AddMessageGroup(_G.ChatFrame5, k)
+        end
         ChatFrame_AddMessageGroup(_G.ChatFrame1, 'PING')
     end
 
