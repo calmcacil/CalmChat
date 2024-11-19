@@ -1,5 +1,5 @@
-## Interface: 110005
-## Version: 0.2
+## Interface: 11504
+## Version: 0.3
 ## Title: Calm's Custom Chat Preset
 ## Notes: Just a quick and dirty chat tab setup script, since weakauras removed support for modifying chat settings...
 ## Author: Calmcacil
