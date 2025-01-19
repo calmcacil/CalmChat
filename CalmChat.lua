@@ -51,7 +51,6 @@ function SlashCmdList.SETUPCHAT()
 
     -- Remove from main tab
     chatGeneralTab = {'COMBAT_XP_GAIN', 'COMBAT_HONOR_GAIN', 'COMBAT_FACTION_CHANGE', 'LOOT', 'CURRENCY', 'MONEY', 'TRADESKILL'}
-    ChatFrame_RemoveAllMessageGroups(_G.ChatFrame1)
     ChatFrame_RemoveChannel(_G.ChatFrame1, "Trade")
     ChatFrame_RemoveChannel(_G.ChatFrame1, "Services")
     for _, k in ipairs(chatGeneralTab) do
