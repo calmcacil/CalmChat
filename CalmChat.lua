@@ -65,21 +65,18 @@ function SlashCmdList.SETUPCHAT()
         ChatFrame_AddMessageGroup(_G.ChatFrame4, k)
     end
 
-    -- Join LFG channel in Classic and TBC (English client only)
+    -- Join LFG channel in Classic and TBC (English client only) and setup tab LFG tab
     if not retail and GetLocale() == 'enUS' then
+        ChatFrame_RemoveAllMessageGroups(_G.ChatFrame5)
         JoinPermanentChannel('LookingForGroup')
         JoinPermanentChannel('Layer')
         ChatFrame_AddChannel(_G.ChatFrame5, 'LookingForGroup')
         
     end
+    -- setup retail tab 5    
     if retail then
-        -- Setup Services tab
-        chats = {}
         ChatFrame_RemoveAllMessageGroups(_G.ChatFrame5)
         ChatFrame_AddChannel(_G.ChatFrame5, "Services")
-        for _, k in ipairs(chats) do
-            ChatFrame_AddMessageGroup(_G.ChatFrame5, k)
-        end
         ChatFrame_AddMessageGroup(_G.ChatFrame1, 'PING')
     end
 
