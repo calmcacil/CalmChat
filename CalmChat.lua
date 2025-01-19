@@ -44,7 +44,6 @@ function SlashCmdList.SETUPCHAT()
             FCF_SetWindowName(frame, 'Loot/Trade')
         elseif id == 5 and retail then
             FCF_SetWindowName(frame, 'Services')
-        end
         elseif id == 5 and not retail then
             FCF_SetWindowName(frame, 'LFG')
         end
