@@ -50,10 +50,10 @@ function SlashCmdList.SETUPCHAT()
     end
 
     -- Remove from main tab
-    chatGeneralTab = {'COMBAT_XP_GAIN', 'COMBAT_HONOR_GAIN', 'COMBAT_FACTION_CHANGE', 'LOOT', 'CURRENCY', 'MONEY', 'TRADESKILL'}
+    chatGeneralTab = {'COMBAT_XP_GAIN', 'COMBAT_HONOR_GAIN', 'COMBAT_FACTION_CHANGE', 'LOOT', 'TRADESKILL'}
     ChatFrame_RemoveChannel(_G.ChatFrame1, "Trade")
     ChatFrame_RemoveChannel(_G.ChatFrame1, "Services")
-    for _, k in ipairs(chatGeneralTab) do
+    for _, v in ipairs(chatGeneralTab) do
         ChatFrame_RemoveMessageGroup(_G.ChatFrame1, v)
     end
 
@@ -65,18 +65,21 @@ function SlashCmdList.SETUPCHAT()
         ChatFrame_AddMessageGroup(_G.ChatFrame4, k)
     end
 
-    -- Join LFG channel in Classic and TBC (English client only) and setup tab LFG tab
+    -- Join LFG channel in Classic and TBC (English client only)
     if not retail and GetLocale() == 'enUS' then
-        ChatFrame_RemoveAllMessageGroups(_G.ChatFrame5)
         JoinPermanentChannel('LookingForGroup')
         JoinPermanentChannel('Layer')
         ChatFrame_AddChannel(_G.ChatFrame5, 'LookingForGroup')
         
     end
-    -- setup retail tab 5    
     if retail then
+        -- Setup Services tab
+        chats = {}
         ChatFrame_RemoveAllMessageGroups(_G.ChatFrame5)
         ChatFrame_AddChannel(_G.ChatFrame5, "Services")
+        for _, k in ipairs(chats) do
+            ChatFrame_AddMessageGroup(_G.ChatFrame5, k)
+        end
         ChatFrame_AddMessageGroup(_G.ChatFrame1, 'PING')
     end
 
