@@ -19,20 +19,21 @@ function SlashCmdList.SETUPCHAT()
 
     -- Create new tabs
     FCF_OpenNewWindow()
-    if retail then
     FCF_OpenNewWindow()
-    end
+    
 
     -- Rename and color all tabs
     for _, name in ipairs(_G.CHAT_FRAMES) do
         local frame = _G[name]
         local id = frame:GetID()
 
-        -- Font size 11 for all tabs
+        -- Font size 14 for all tabs
         FCF_SetChatWindowFontSize(nil, frame, 14)
 
         if id == 1 then
             FCF_SetWindowName(frame, 'General')
+            frame:ClearAllPoints()
+			frame:Point('BOTTOMLEFT', _G.LeftChatToggleButton, 'TOPLEFT', 1, 3)
         elseif id == 2 then
             FCF_SetWindowName(frame, 'Log')
         elseif id == 3 then
@@ -41,36 +42,34 @@ function SlashCmdList.SETUPCHAT()
             VoiceTranscriptionFrame_UpdateEditBox(frame)
         elseif id == 4 then
             FCF_SetWindowName(frame, 'Loot/Trade')
-        elseif id == 5 then
+        elseif id == 5 and retail then
             FCF_SetWindowName(frame, 'Services')
+        elseif id == 5 and not retail then
+            FCF_SetWindowName(frame, 'LFG')
         end
     end
 
-    -- Remove Loot from main tab
-    local chatGroup = {'SYSTEM', 'CHANNEL', 'SAY', 'EMOTE', 'YELL', 'WHISPER', 'PARTY', 'PARTY_LEADER', 'RAID',
-                       'RAID_LEADER', 'RAID_WARNING', 'INSTANCE_CHAT', 'INSTANCE_CHAT_LEADER', 'GUILD', 'OFFICER',
-                       'MONSTER_SAY', 'MONSTER_YELL', 'MONSTER_EMOTE', 'MONSTER_WHISPER', 'MONSTER_BOSS_EMOTE',
-                       'MONSTER_BOSS_WHISPER', 'ERRORS', 'AFK', 'DND', 'IGNORED', 'BG_HORDE', 'BG_ALLIANCE',
-                       'BG_NEUTRAL', 'ACHIEVEMENT', 'GUILD_ACHIEVEMENT', 'BN_WHISPER', 'BN_INLINE_TOAST_ALERT'}
-    ChatFrame_RemoveAllMessageGroups(_G.ChatFrame1)
+    -- Remove from main tab
+    chatGeneralTab = {'COMBAT_XP_GAIN', 'COMBAT_HONOR_GAIN', 'COMBAT_FACTION_CHANGE', 'LOOT', 'TRADESKILL'}
     ChatFrame_RemoveChannel(_G.ChatFrame1, "Trade")
     ChatFrame_RemoveChannel(_G.ChatFrame1, "Services")
-    for _, v in next, chatGroup do
-        ChatFrame_AddMessageGroup(_G.ChatFrame1, v)
+    for _, v in ipairs(chatGeneralTab) do
+        ChatFrame_RemoveMessageGroup(_G.ChatFrame1, v)
     end
 
     -- Setup Loot tab
-    chats = {'COMBAT_XP_GAIN', 'COMBAT_HONOR_GAIN', 'COMBAT_FACTION_CHANGE', 'SKILL', 'LOOT', 'CURRENCY', 'MONEY', 'TRADESKILL'}
+    chatLootTab = {'COMBAT_XP_GAIN', 'COMBAT_HONOR_GAIN', 'COMBAT_FACTION_CHANGE', 'SKILL', 'LOOT', 'CURRENCY', 'MONEY', 'TRADESKILL'}
     ChatFrame_RemoveAllMessageGroups(_G.ChatFrame4)
     ChatFrame_AddChannel(_G.ChatFrame4, "Trade")
-    for _, k in ipairs(chats) do
+    for _, k in ipairs(chatLootTab) do
         ChatFrame_AddMessageGroup(_G.ChatFrame4, k)
     end
 
     -- Join LFG channel in Classic and TBC (English client only)
     if not retail and GetLocale() == 'enUS' then
         JoinPermanentChannel('LookingForGroup')
-        ChatFrame_AddChannel(_G.ChatFrame1, 'LookingForGroup')
+        JoinPermanentChannel('Layer')
+        ChatFrame_AddChannel(_G.ChatFrame5, 'LookingForGroup')
         
     end
     if retail then
