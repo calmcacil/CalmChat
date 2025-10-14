@@ -16,8 +16,13 @@ Extract the `CalmChat` folder to your WoW addons directory:
 - **Retail**: `World of Warcraft\_retail_\Interface\AddOns\`
 - **Classic/SoD**: `World of Warcraft\_classic_\Interface\AddOns\`
 - **Vanilla**: `World of Warcraft\_classic_era_\Interface\AddOns\`
+### or
+
+- **Alternatively**: Use Install URL feature of wowup.io addon manager.
 
 Then `/reload` in-game.
+
+
 
 ## Chat Frame Layout
 
