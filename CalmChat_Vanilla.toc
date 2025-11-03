@@ -4,4 +4,18 @@
 ## Notes: Automatically configures chat tabs when missing. Auto-setup can be toggled with /csetupauto. Manual setup: /csetupchat
 ## Author: Calmcacil
 
-CalmChat.lua
+# Core modules (must load first)
+Core\Config.lua
+Core\Utils.lua
+
+# Feature modules
+Modules\CVars.lua
+Modules\ChatFrames.lua
+Modules\MessageGroups.lua
+Modules\Channels.lua
+
+# Commands module
+Commands\SlashCommands.lua
+
+# Main initialization (must load last)
+Core\Core.lua
