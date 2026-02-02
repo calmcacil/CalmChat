@@ -1,7 +1,7 @@
-## Interface: 110205
-## Version: 1.0
+## Interface: 120000
+## Version: 2.0.0
 ## Title: Calm's Custom Chat Preset
-## Notes: Automatically configures chat tabs when missing. Auto-setup can be toggled with /csetupauto. Manual setup: /csetupchat
+## Notes: Manual chat frame setup with sensible defaults. Configure with /csetupchat. Customize Services/Voice frames in CalmChat.lua
 ## Author: Calmcacil
 
 CalmChat.lua
