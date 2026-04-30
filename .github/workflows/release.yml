@@ -5,16 +5,23 @@ on:
         tags:
             - "*"
 
+permissions:
+    contents: read
+
 jobs:
     release:
-        permissions: write-all
+        permissions:
+            contents: write
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
 
         steps:
           - name: Clone project
             uses: actions/checkout@v4
+            with:
+                fetch-depth: 0
 
           - name: Package and release
             uses: BigWigsMods/packager@v2

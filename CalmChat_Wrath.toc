@@ -1,4 +1,4 @@
-## Interface: 11508
+## Interface: 38001
 ## Version: 2.0.1
 ## Title: Calm's Custom Chat Preset
 ## Notes: Manual chat frame setup with sensible defaults. Configure with /calmchat. Customize Services/Voice frames in CalmChat.lua

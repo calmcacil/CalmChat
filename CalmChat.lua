@@ -2,30 +2,72 @@
 local ENABLE_SERVICES_TAB = false
 local ENABLE_VOICE_FRAME = true
 
--- Main slash command handler
-SLASH_SETUPCHAT1 = "/csetupchat"
+local function IsRetailClient()
+    return WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+end
 
-function SlashCmdList.SETUPCHAT()
+local function CallGlobal(name, ...)
+    local func = _G[name]
+    if type(func) == "function" then
+        return func(...)
+    end
+end
+
+local function CallFrame(frame, method, ...)
+    local func = frame and frame[method]
+    if type(func) == "function" then
+        return func(frame, ...)
+    end
+end
+
+local function SetCVarIfAvailable(name, value)
+    if type(SetCVar) == "function" then
+        pcall(SetCVar, name, value)
+    end
+end
+
+-- Main slash command handler
+SLASH_CALMCHAT1 = "/csetupchat"
+SLASH_CALMCHAT2 = "/calmchat"
+
+function SlashCmdList.CALMCHAT()
+    SetupChat()
+end
+
+function CalmChat_OnAddonCompartmentClick()
     SetupChat()
 end
 
 function SetupChat()
-    local retail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
+    local retail = IsRetailClient()
+
+    if type(FCF_ResetChatWindows) ~= "function" or type(FCF_OpenNewWindow) ~= "function" then
+        print("|cffff2020[CalmChat] Blizzard chat window APIs are unavailable.|r")
+        return
+    end
 
     -- CVars
-    SetCVar("chatStyle", "classic")
-    SetCVar("whisperMode", "inline")
-    SetCVar("colorChatNamesByClass", "1")
-    SetCVar("chatClassColorOverride", "0")
-    SetCVar("speechToText", "0")
-    SetCVar("textToSpeech", "0")
+    local cvars = {
+        {"chatStyle", "classic"},
+        {"whisperMode", "inline"},
+        {"colorChatNamesByClass", "1"},
+        {"chatClassColorOverride", "0"},
+        {"speechToText", "0"},
+        {"textToSpeech", "0"},
+    }
 
-    -- Reset and create new windows (only create 4 frames if Services disabled)
+    for _, cvar in ipairs(cvars) do
+        SetCVarIfAvailable(cvar[1], cvar[2])
+    end
+
+    -- Reset and create dedicated windows. Use returned frames so Classic clients
+    -- without Retail's voice tab still get the intended Loot/LFG layout.
     FCF_ResetChatWindows()
-    FCF_OpenNewWindow()  -- Frame 4 (Loot/Trade)
-    
-    if ENABLE_SERVICES_TAB then
-        FCF_OpenNewWindow()  -- Frame 5 (Services)
+
+    local lootFrame = FCF_OpenNewWindow("Loot/Trade") or _G.ChatFrame4
+    local servicesOrLFGFrame
+    if ENABLE_SERVICES_TAB or not retail then
+        servicesOrLFGFrame = FCF_OpenNewWindow(retail and "Services" or "LFG") or _G.ChatFrame5
     end
 
     -- Configure all chat frames
@@ -34,35 +76,25 @@ function SetupChat()
         if frame then
             local id = frame:GetID()
 
-            FCF_SetChatWindowFontSize(nil, frame, 14)
+            CallGlobal("FCF_SetChatWindowFontSize", nil, frame, 14)
 
-            if id == 1 then
-                FCF_SetWindowName(frame, "General")
+            if frame == lootFrame then
+                CallGlobal("FCF_SetWindowName", frame, "Loot/Trade")
+            elseif frame == servicesOrLFGFrame then
+                CallGlobal("FCF_SetWindowName", frame, retail and "Services" or "LFG")
+            elseif id == 1 then
+                CallGlobal("FCF_SetWindowName", frame, "General")
                 frame:ClearAllPoints()
                 if _G.LeftChatToggleButton then
                     frame:SetPoint("BOTTOMLEFT", _G.LeftChatToggleButton, "TOPLEFT", 1, 3)
                 end
             elseif id == 2 then
-                FCF_SetWindowName(frame, "Log")
-            elseif id == 3 then
+                CallGlobal("FCF_SetWindowName", frame, "Log")
+            elseif retail and id == 3 then
                 if ENABLE_VOICE_FRAME then
-                    if VoiceTranscriptionFrame_UpdateVisibility then
-                        VoiceTranscriptionFrame_UpdateVisibility(frame)
-                    end
-                    if VoiceTranscriptionFrame_UpdateVoiceTab then
-                        VoiceTranscriptionFrame_UpdateVoiceTab(frame)
-                    end
-                    if VoiceTranscriptionFrame_UpdateEditBox then
-                        VoiceTranscriptionFrame_UpdateEditBox(frame)
-                    end
-                end
-            elseif id == 4 then
-                FCF_SetWindowName(frame, "Loot/Trade")
-            elseif id == 5 then
-                if retail and ENABLE_SERVICES_TAB then
-                    FCF_SetWindowName(frame, "Services")
-                elseif not retail then
-                    FCF_SetWindowName(frame, "LFG")
+                    CallGlobal("VoiceTranscriptionFrame_UpdateVisibility", frame)
+                    CallGlobal("VoiceTranscriptionFrame_UpdateVoiceTab", frame)
+                    CallGlobal("VoiceTranscriptionFrame_UpdateEditBox", frame)
                 end
             end
         end
@@ -70,40 +102,48 @@ function SetupChat()
 
     -- Configure ChatFrame1 (General)
     local generalRemovals = {"COMBAT_XP_GAIN", "COMBAT_HONOR_GAIN", "COMBAT_FACTION_CHANGE", "LOOT", "TRADESKILL"}
-    _G.ChatFrame1:RemoveChannel("Trade")
-    _G.ChatFrame1:RemoveChannel("Services")
+    CallFrame(_G.ChatFrame1, "RemoveChannel", "Trade")
+    CallFrame(_G.ChatFrame1, "RemoveChannel", "Services")
     for _, v in ipairs(generalRemovals) do
-        _G.ChatFrame1:RemoveMessageGroup(v)
+        CallFrame(_G.ChatFrame1, "RemoveMessageGroup", v)
     end
 
-    -- Configure ChatFrame4 (Loot/Trade)
-    if _G.ChatFrame4 then
-        _G.ChatFrame4:RemoveAllMessageGroups()
-        _G.ChatFrame4:AddChannel("Trade")
+    -- Configure Loot/Trade
+    if lootFrame then
+        CallFrame(lootFrame, "RemoveAllMessageGroups")
+        CallFrame(lootFrame, "RemoveAllChannels")
+        CallFrame(lootFrame, "AddMessageGroup", "CHANNEL")
+        CallFrame(lootFrame, "AddChannel", "Trade")
         local lootGroups = {"COMBAT_XP_GAIN", "COMBAT_HONOR_GAIN", "COMBAT_FACTION_CHANGE", "SKILL", "LOOT", "CURRENCY", "MONEY", "TRADESKILL"}
         for _, k in ipairs(lootGroups) do
-            _G.ChatFrame4:AddMessageGroup(k)
+            CallFrame(lootFrame, "AddMessageGroup", k)
         end
     end
 
-    -- Configure ChatFrame5 (Services or LFG) - only if it exists
-    if _G.ChatFrame5 then
-        _G.ChatFrame5:RemoveAllMessageGroups()
-        
-        if retail and ENABLE_SERVICES_TAB then
-            _G.ChatFrame5:AddChannel("Services")
+    -- Configure Services or LFG
+    if servicesOrLFGFrame then
+        CallFrame(servicesOrLFGFrame, "RemoveAllMessageGroups")
+        CallFrame(servicesOrLFGFrame, "RemoveAllChannels")
+
+        if retail then
+            CallFrame(servicesOrLFGFrame, "AddMessageGroup", "CHANNEL")
+            CallFrame(servicesOrLFGFrame, "AddChannel", "Services")
         elseif not retail and GetLocale() == "enUS" then
-            _G.ChatFrame5:AddChannel("LookingForGroup")
-            JoinPermanentChannel("LookingForGroup")
-            JoinPermanentChannel("Layer")
+            local _, lfgChannel = CallGlobal("JoinPermanentChannel", "LookingForGroup", nil, servicesOrLFGFrame:GetID(), 1)
+            local _, layerChannel = CallGlobal("JoinPermanentChannel", "Layer", nil, servicesOrLFGFrame:GetID(), 1)
+            CallFrame(servicesOrLFGFrame, "AddMessageGroup", "CHANNEL")
+            CallFrame(servicesOrLFGFrame, "AddChannel", lfgChannel or "LookingForGroup")
+            CallFrame(servicesOrLFGFrame, "AddChannel", layerChannel or "Layer")
         end
-        
-        if retail and ENABLE_SERVICES_TAB then
-            _G.ChatFrame1:AddMessageGroup("PING")
+
+        if retail then
+            CallFrame(_G.ChatFrame1, "AddMessageGroup", "PING")
         end
     end
 
     -- Select General tab and finish
-    FCFDock_SelectWindow(_G.GENERAL_CHAT_DOCK, _G.ChatFrame1)
+    if type(FCFDock_SelectWindow) == "function" and _G.GENERAL_CHAT_DOCK and _G.ChatFrame1 then
+        FCFDock_SelectWindow(_G.GENERAL_CHAT_DOCK, _G.ChatFrame1)
+    end
     print("|cffbe1c1c[CalmChat] Chat setup successful.|r")
 end

@@ -1,7 +1,8 @@
-## Interface: 120000
-## Version: 2.0.0
+## Interface: 120005
+## Version: 2.0.1
 ## Title: Calm's Custom Chat Preset
-## Notes: Manual chat frame setup with sensible defaults. Configure with /csetupchat. Customize Services/Voice frames in CalmChat.lua
+## Notes: Manual chat frame setup with sensible defaults. Configure with /calmchat. Customize Services/Voice frames in CalmChat.lua
 ## Author: Calmcacil
+## AddonCompartmentFunc: CalmChat_OnAddonCompartmentClick
 
 CalmChat.lua
