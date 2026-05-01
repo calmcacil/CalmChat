@@ -40,9 +40,22 @@ jobs:
                     exit 1
                 fi
 
-                if [[ "${GITHUB_EVENT_NAME}" == "push" && ! "${HEAD_COMMIT_MESSAGE:-}" =~ ^chore\(main\):\ release\  ]]; then
-                    echo "Head commit is not a release-please commit. Skipping tag creation."
-                    exit 0
+                head_subject="$(git log -1 --pretty=%s)"
+                head_message="$(git log -1 --pretty=%B)"
+
+                if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+                    is_release_commit=false
+                    while IFS= read -r line; do
+                        if [[ "$line" =~ ^chore\(main\):\ release\  ]]; then
+                            is_release_commit=true
+                            break
+                        fi
+                    done <<< "$head_message"
+
+                    if [[ "$is_release_commit" != true ]]; then
+                        echo "Head commit is not a release-please commit. Skipping tag creation."
+                        exit 0
+                    fi
                 fi
 
                 [[ -f VERSION ]] || { echo "error: VERSION is missing" >&2; exit 1; }
@@ -81,17 +94,26 @@ jobs:
                     exit 0
                 fi
 
-                if [[ ! "${HEAD_COMMIT_MESSAGE:-}" =~ ^chore\(main\):\ release\ .*\ \(#([0-9]+)\)$ ]]; then
+                head_subject="$(git log -1 --pretty=%s)"
+                head_message="$(git log -1 --pretty=%B)"
+
+                pr_number=""
+                if [[ "$head_subject" =~ ^Merge\ pull\ request\ \#([0-9]+)\ from\  ]]; then
+                    pr_number="${BASH_REMATCH[1]}"
+                else
+                    while IFS= read -r line; do
+                        if [[ "$line" =~ ^chore\(main\):\ release\ .*\ \(#([0-9]+)\)$ ]]; then
+                            pr_number="${BASH_REMATCH[1]}"
+                            break
+                        fi
+                    done <<< "$head_message"
+                fi
+
+                if [[ -z "$pr_number" ]]; then
                     echo "Head commit is not a release-please merge commit. Skipping label update."
                     exit 0
                 fi
 
-                pr_number="${BASH_REMATCH[1]}"
-
-                gh api "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/labels" \
-                    --method POST \
-                    -f labels[]='autorelease: tagged' >/dev/null
-
                 gh api --method DELETE "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/labels/autorelease%3A%20pending" >/dev/null || true
 
-                echo "Marked release PR #${pr_number} as tagged."
+                echo "Removed autorelease: pending label from release PR #${pr_number}."
