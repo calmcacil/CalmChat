@@ -1,6 +1,12 @@
--- Services and Voice frame configuration
-local ENABLE_SERVICES_TAB = false
-local ENABLE_VOICE_FRAME = true
+local ADDON_NAME = "CalmChat"
+local DEFAULT_SETTINGS = {
+    enableServicesTab = false,
+    enableVoiceFrame = true,
+    autoJoinClassicLFG = true,
+    setupOnLogin = false,
+}
+
+local settingsCategoryID
 
 local function IsRetailClient()
     return WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
@@ -26,19 +32,76 @@ local function SetCVarIfAvailable(name, value)
     end
 end
 
+local function EnsureSettings()
+    CalmChatDB = CalmChatDB or {}
+    for key, value in pairs(DEFAULT_SETTINGS) do
+        if CalmChatDB[key] == nil then
+            CalmChatDB[key] = value
+        end
+    end
+    return CalmChatDB
+end
+
+local function RegisterBooleanSetting(category, key, label, tooltip)
+    local variable = ADDON_NAME .. "_" .. key
+    local setting = Settings.RegisterAddOnSetting(category, variable, key, CalmChatDB, Settings.VarType.Boolean, label, DEFAULT_SETTINGS[key])
+    Settings.CreateCheckbox(category, setting, tooltip)
+end
+
+local function RegisterSettingsPanel()
+    if settingsCategoryID then
+        return
+    end
+
+    if not (Settings and Settings.RegisterVerticalLayoutCategory and Settings.RegisterAddOnCategory and Settings.RegisterAddOnSetting and Settings.CreateCheckbox and Settings.VarType) then
+        return
+    end
+
+    EnsureSettings()
+    local category = Settings.RegisterVerticalLayoutCategory(ADDON_NAME)
+    RegisterBooleanSetting(category, "enableServicesTab", "Create Services tab on Retail", "Creates a dedicated Services chat tab when running /calmchat on Retail clients.")
+    RegisterBooleanSetting(category, "enableVoiceFrame", "Keep Retail voice transcription frame", "Preserves Blizzard's voice transcription frame when configuring Retail chat windows.")
+    RegisterBooleanSetting(category, "autoJoinClassicLFG", "Auto-join Classic LFG channels", "On English Classic clients, joins LookingForGroup and Layer and routes them to the LFG tab.")
+    RegisterBooleanSetting(category, "setupOnLogin", "Run setup after login or reload", "Automatically applies the selected chat preset shortly after PLAYER_LOGIN.")
+    Settings.RegisterAddOnCategory(category)
+    settingsCategoryID = type(category.GetID) == "function" and category:GetID() or category.ID
+end
+
+local function OpenSettingsPanel()
+    if not settingsCategoryID then
+        RegisterSettingsPanel()
+    end
+
+    if settingsCategoryID and Settings and Settings.OpenToCategory then
+        Settings.OpenToCategory(settingsCategoryID)
+        return true
+    else
+        print("|cffff2020[CalmChat] Settings are unavailable on this client.|r")
+        return false
+    end
+end
+
 -- Main slash command handler
 SLASH_CALMCHAT1 = "/csetupchat"
 SLASH_CALMCHAT2 = "/calmchat"
 
-function SlashCmdList.CALMCHAT()
-    SetupChat()
+function SlashCmdList.CALMCHAT(msg)
+    msg = msg and string.lower(string.match(msg, "^%s*(.-)%s*$")) or ""
+    if msg == "config" or msg == "options" or msg == "settings" then
+        OpenSettingsPanel()
+    else
+        SetupChat()
+    end
 end
 
 function CalmChat_OnAddonCompartmentClick()
-    SetupChat()
+    if not OpenSettingsPanel() then
+        SetupChat()
+    end
 end
 
 function SetupChat()
+    local config = EnsureSettings()
     local retail = IsRetailClient()
 
     if type(FCF_ResetChatWindows) ~= "function" or type(FCF_OpenNewWindow) ~= "function" then
@@ -66,7 +129,7 @@ function SetupChat()
 
     local lootFrame = FCF_OpenNewWindow("Loot/Trade") or _G.ChatFrame4
     local servicesOrLFGFrame
-    if ENABLE_SERVICES_TAB or not retail then
+    if config.enableServicesTab or not retail then
         servicesOrLFGFrame = FCF_OpenNewWindow(retail and "Services" or "LFG") or _G.ChatFrame5
     end
 
@@ -91,7 +154,7 @@ function SetupChat()
             elseif id == 2 then
                 CallGlobal("FCF_SetWindowName", frame, "Log")
             elseif retail and id == 3 then
-                if ENABLE_VOICE_FRAME then
+                if config.enableVoiceFrame then
                     CallGlobal("VoiceTranscriptionFrame_UpdateVisibility", frame)
                     CallGlobal("VoiceTranscriptionFrame_UpdateVoiceTab", frame)
                     CallGlobal("VoiceTranscriptionFrame_UpdateEditBox", frame)
@@ -128,7 +191,7 @@ function SetupChat()
         if retail then
             CallFrame(servicesOrLFGFrame, "AddMessageGroup", "CHANNEL")
             CallFrame(servicesOrLFGFrame, "AddChannel", "Services")
-        elseif not retail and GetLocale() == "enUS" then
+        elseif config.autoJoinClassicLFG and GetLocale() == "enUS" then
             local _, lfgChannel = CallGlobal("JoinPermanentChannel", "LookingForGroup", nil, servicesOrLFGFrame:GetID(), 1)
             local _, layerChannel = CallGlobal("JoinPermanentChannel", "Layer", nil, servicesOrLFGFrame:GetID(), 1)
             CallFrame(servicesOrLFGFrame, "AddMessageGroup", "CHANNEL")
@@ -147,3 +210,22 @@ function SetupChat()
     end
     print("|cffbe1c1c[CalmChat] Chat setup successful.|r")
 end
+
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:SetScript("OnEvent", function(_, event, addonName)
+    if event == "ADDON_LOADED" and addonName == ADDON_NAME then
+        EnsureSettings()
+        RegisterSettingsPanel()
+    elseif event == "PLAYER_LOGIN" then
+        local config = EnsureSettings()
+        if config.setupOnLogin then
+            if C_Timer and C_Timer.After then
+                C_Timer.After(1, SetupChat)
+            else
+                SetupChat()
+            end
+        end
+    end
+end)

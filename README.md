@@ -29,8 +29,9 @@ Log in or `/reload` to load the addon.
 |---------|--------|
 | `/calmchat` | Manually configure all chat frames |
 | `/csetupchat` | Backward-compatible setup alias |
+| `/calmchat config` | Open CalmChat in Blizzard's settings menu |
 
-You can also run setup from the addon compartment button on clients that support it.
+You can also open settings from the addon compartment button on clients that support it.
 
 ### Chat Layout
 
@@ -49,28 +50,27 @@ You can also run setup from the addon compartment button on clients that support
 
 ## Configuration
 
-Edit `CalmChat.lua` to customize defaults:
+Open **Options > AddOns > CalmChat** or run `/calmchat config`.
 
-```lua
--- Services tab (disabled by default)
-local ENABLE_SERVICES_TAB = false
+| Setting | Default | Behavior |
+|---------|---------|----------|
+| Create Services tab on Retail | Off | Adds a dedicated Services tab when setup runs on Retail |
+| Keep Retail voice transcription frame | On | Preserves Blizzard's Retail voice transcription tab during setup |
+| Auto-join Classic LFG channels | On | Joins and routes `LookingForGroup`/`Layer` on English Classic clients |
+| Run setup after login or reload | Off | Applies the preset shortly after `PLAYER_LOGIN` |
 
--- Voice frame (enabled by default)
-local ENABLE_VOICE_FRAME = true
-```
-
-After changing these values, run `/csetupchat` to apply.
+After changing layout settings, run `/calmchat` to apply them immediately.
 
 ## Compatibility
 
-**v2.0.1** supports **WoW Midnight 12.0.5** (current Retail)
+**v2.1.0** supports **WoW Midnight 12.0.5** (current Retail)
 
 | Version | Status |
 |---------|--------|
 | Retail (Midnight 12.0.5) | Compatible (`120005`) |
 | Mists Classic | Compatible (`50503`) |
 | Cataclysm Classic | Compatible (`40402`) |
-| Titan Reforged/Wrath Classic | Compatible (`38001`) |
+| Titan Reforged | Compatible (`38001`) |
 | Burning Crusade Classic | Compatible (`20505`) |
 | Season of Discovery | Compatible (`11508`) |
 | Classic Era | Compatible (`11508`, use CalmChat_Vanilla.toc) |
@@ -96,6 +96,9 @@ After changing these values, run `/csetupchat` to apply.
 **Getting errors?**
 - Disable conflicting chat addons temporarily
 - Report the full error message
+
+**Where are settings saved?**
+- Settings are account-wide in `CalmChatDB`.
 
 ## Credits
 
