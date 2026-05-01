@@ -21,28 +21,26 @@ jobs:
         timeout-minutes: 10
 
         steps:
-          - name: Skip when workflow permissions cannot create PRs
-            id: permissions_check
+          - name: Check RELEASE_PLEASE_TOKEN availability
+            id: token_check
             shell: bash
             env:
-                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
             run: |
                 set -euo pipefail
 
-                can_approve=$(gh api repos/${GITHUB_REPOSITORY}/actions/permissions/workflow --jq '.can_approve_pull_request_reviews')
-                if [[ "$can_approve" != "true" ]]; then
-                    echo "Repository Actions setting 'Allow GitHub Actions to create and approve pull requests' is disabled."
-                    echo "Enable it before running release-please automation."
+                if [[ -z "${RELEASE_PLEASE_TOKEN:-}" ]]; then
+                    echo "RELEASE_PLEASE_TOKEN is not set. Skipping release-please PR automation."
                     echo "enabled=false" >> "$GITHUB_OUTPUT"
                 else
                     echo "enabled=true" >> "$GITHUB_OUTPUT"
                 fi
 
           - name: Run release-please
-            if: steps.permissions_check.outputs.enabled == 'true'
+            if: steps.token_check.outputs.enabled == 'true'
             uses: googleapis/release-please-action@v4
             with:
-                token: ${{ secrets.GITHUB_TOKEN }}
+                token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
                 config-file: release-please-config.json
                 manifest-file: .release-please-manifest.json
                 skip-github-release: true
