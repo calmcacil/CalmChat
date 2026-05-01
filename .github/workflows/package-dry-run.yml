@@ -36,5 +36,7 @@ jobs:
             uses: actions/upload-artifact@v4
             with:
                 name: calmchat-package-dry-run
-                path: .release/
+                path: |
+                    .release/*.zip
+                    .release/**/*.zip
                 if-no-files-found: warn

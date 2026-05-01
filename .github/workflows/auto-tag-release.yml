@@ -7,7 +7,7 @@ on:
     workflow_dispatch:
 
 permissions:
-    contents: write
+    contents: read
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,19 +19,27 @@ jobs:
         timeout-minutes: 10
         env:
             HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+            RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
         steps:
           - name: Clone project
             uses: actions/checkout@v4
             with:
                 fetch-depth: 0
+                fetch-tags: true
+                token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
 
           - name: Validate VERSION and create tag
             shell: bash
             run: |
                 set -euo pipefail
 
-                if [[ ! "${HEAD_COMMIT_MESSAGE:-}" =~ ^chore\(main\):\ release\  ]]; then
+                if [[ -z "${RELEASE_PLEASE_TOKEN:-}" ]]; then
+                    echo "error: RELEASE_PLEASE_TOKEN is required so the tag push can trigger the package release workflow." >&2
+                    exit 1
+                fi
+
+                if [[ "${GITHUB_EVENT_NAME}" == "push" && ! "${HEAD_COMMIT_MESSAGE:-}" =~ ^chore\(main\):\ release\  ]]; then
                     echo "Head commit is not a release-please commit. Skipping tag creation."
                     exit 0
                 fi
@@ -45,7 +53,7 @@ jobs:
                 fi
 
                 tag="v${version}"
-                if git rev-parse "$tag" >/dev/null 2>&1; then
+                if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
                     echo "Tag $tag already exists. Nothing to do."
                     exit 0
                 fi

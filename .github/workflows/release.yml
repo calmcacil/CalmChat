@@ -4,6 +4,12 @@ on:
     push:
         tags:
             - "v*"
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Release tag to package, for example v2.1.2
+                required: true
+                type: string
 
 permissions:
     contents: read
@@ -16,19 +22,22 @@ jobs:
         timeout-minutes: 10
         env:
             GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+            RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
         steps:
           - name: Clone project
             uses: actions/checkout@v4
             with:
                 fetch-depth: 0
+                fetch-tags: true
+                ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
           - name: Validate semantic tag and version sync
             shell: bash
             run: |
                 set -euo pipefail
 
-                tag="${GITHUB_REF_NAME}"
+                tag="${RELEASE_TAG}"
                 semver_regex='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
                 if [[ ! "$tag" =~ $semver_regex ]]; then
                     echo "error: tag '$tag' is not valid semantic versioning" >&2
