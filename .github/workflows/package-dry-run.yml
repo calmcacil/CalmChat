@@ -40,3 +40,4 @@ jobs:
                     .release/*.zip
                     .release/**/*.zip
                 if-no-files-found: warn
+                include-hidden-files: true
