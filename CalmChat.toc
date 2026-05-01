@@ -1,6 +1,6 @@
 ## Interface: 120005
 # x-release-please-start-version
-## Version: 2.1.1
+## Version: 2.1.2
 # x-release-please-end
 ## Title: Calm's Custom Chat Preset
 ## Notes: Manual chat frame setup with sensible defaults. Configure with /calmchat config.
