@@ -1,0 +1,60 @@
+name: Enforce branch protection
+
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '37 4 * * 1'
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    protect-main:
+        if: ${{ secrets.BRANCH_PROTECTION_TOKEN != '' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+          - name: Require checks on main
+            shell: bash
+            env:
+                GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
+            run: |
+                set -euo pipefail
+
+                gh api \
+                    --method PUT \
+                    -H "Accept: application/vnd.github+json" \
+                    "repos/${GITHUB_REPOSITORY}/branches/main/protection" \
+                    --input - <<'JSON'
+                {
+                  "required_status_checks": {
+                    "strict": true,
+                    "checks": [
+                      {"context": "static"},
+                      {"context": "package"},
+                      {"context": "lint"},
+                      {"context": "commit_messages"}
+                    ]
+                  },
+                  "enforce_admins": false,
+                  "required_pull_request_reviews": {
+                    "required_approving_review_count": 1,
+                    "dismiss_stale_reviews": true,
+                    "require_code_owner_reviews": false,
+                    "require_last_push_approval": false
+                  },
+                  "restrictions": null,
+                  "required_linear_history": true,
+                  "allow_force_pushes": false,
+                  "allow_deletions": false,
+                  "block_creations": false,
+                  "required_conversation_resolution": true,
+                  "lock_branch": false,
+                  "allow_fork_syncing": false
+                }
+                JSON

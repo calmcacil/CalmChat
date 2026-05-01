@@ -1,0 +1,49 @@
+name: Auto tag release
+
+on:
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: write
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    tag:
+        if: startsWith(github.event.head_commit.message, 'chore(main): release ')
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+          - name: Clone project
+            uses: actions/checkout@v4
+            with:
+                fetch-depth: 0
+
+          - name: Validate VERSION and create tag
+            shell: bash
+            run: |
+                set -euo pipefail
+
+                [[ -f VERSION ]] || { echo "error: VERSION is missing" >&2; exit 1; }
+                version=$(tr -d '\r\n' < VERSION)
+                semver_regex='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+                if [[ ! "$version" =~ $semver_regex ]]; then
+                    echo "error: VERSION '$version' is not valid semantic versioning" >&2
+                    exit 1
+                fi
+
+                tag="v${version}"
+                if git rev-parse "$tag" >/dev/null 2>&1; then
+                    echo "Tag $tag already exists. Nothing to do."
+                    exit 0
+                fi
+
+                git config user.name github-actions[bot]
+                git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+                git tag -a "$tag" -m "$tag"
+                git push origin "$tag"
