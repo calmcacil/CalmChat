@@ -1,5 +1,5 @@
 ## Interface: 11508
-## Version: 2.1.0
+## Version: 2.1.1
 ## Title: Calm's Custom Chat Preset
 ## Notes: Manual chat frame setup with sensible defaults. Configure with /calmchat config.
 ## Author: Calmcacil

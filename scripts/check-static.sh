@@ -32,7 +32,7 @@ check_toc() {
     grep -Eq '^## AddonCompartmentFunc:[[:space:]]*CalmChat_OnAddonCompartmentClick[[:space:]]*$' "$toc" || fail "$toc is missing AddonCompartmentFunc"
 }
 
-expected_version=2.1.0
+expected_version=2.1.1
 check_toc CalmChat.toc 120005 "$expected_version"
 check_toc CalmChat_Mists.toc 50503 "$expected_version"
 check_toc CalmChat_Cata.toc 40402 "$expected_version"

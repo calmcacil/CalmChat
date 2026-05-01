@@ -7,6 +7,7 @@ local DEFAULT_SETTINGS = {
 }
 
 local settingsCategoryID
+local warnedClassicLocale
 
 local function IsRetailClient()
     return WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
@@ -58,7 +59,17 @@ local function RegisterSettingsPanel()
     end
 
     EnsureSettings()
-    local category = Settings.RegisterVerticalLayoutCategory(ADDON_NAME)
+    local category, layout = Settings.RegisterVerticalLayoutCategory(ADDON_NAME)
+    if layout and Settings.CreateElementInitializer and type(layout.AddInitializer) == "function" then
+        local ok, initializer = pcall(Settings.CreateElementInitializer, "SettingsListSectionHeaderTemplate", {
+            name = "Run /calmchat after changing options",
+            tooltip = "CalmChat applies layout changes when /calmchat is run.",
+        })
+        if ok and initializer then
+            pcall(layout.AddInitializer, layout, initializer)
+        end
+    end
+
     RegisterBooleanSetting(category, "enableServicesTab", "Create Services tab on Retail", "Creates a dedicated Services chat tab when running /calmchat on Retail clients.")
     RegisterBooleanSetting(category, "enableVoiceFrame", "Keep Retail voice transcription frame", "Preserves Blizzard's voice transcription frame when configuring Retail chat windows.")
     RegisterBooleanSetting(category, "autoJoinClassicLFG", "Auto-join Classic LFG channels", "On English Classic clients, joins LookingForGroup and Layer and routes them to the LFG tab.")
@@ -100,16 +111,7 @@ function CalmChat_OnAddonCompartmentClick()
     end
 end
 
-function SetupChat()
-    local config = EnsureSettings()
-    local retail = IsRetailClient()
-
-    if type(FCF_ResetChatWindows) ~= "function" or type(FCF_OpenNewWindow) ~= "function" then
-        print("|cffff2020[CalmChat] Blizzard chat window APIs are unavailable.|r")
-        return
-    end
-
-    -- CVars
+local function ApplyChatCVars()
     local cvars = {
         {"chatStyle", "classic"},
         {"whisperMode", "inline"},
@@ -122,9 +124,9 @@ function SetupChat()
     for _, cvar in ipairs(cvars) do
         SetCVarIfAvailable(cvar[1], cvar[2])
     end
+end
 
-    -- Reset and create dedicated windows. Use returned frames so Classic clients
-    -- without Retail's voice tab still get the intended Loot/LFG layout.
+local function CreateConfiguredFrames(config, retail)
     FCF_ResetChatWindows()
 
     local lootFrame = FCF_OpenNewWindow("Loot/Trade") or _G.ChatFrame4
@@ -133,8 +135,11 @@ function SetupChat()
         servicesOrLFGFrame = FCF_OpenNewWindow(retail and "Services" or "LFG") or _G.ChatFrame5
     end
 
-    -- Configure all chat frames
-    for _, name in ipairs(_G.CHAT_FRAMES) do
+    return lootFrame, servicesOrLFGFrame
+end
+
+local function ConfigureFrameTitles(lootFrame, servicesOrLFGFrame, retail, config)
+    for _, name in ipairs(_G.CHAT_FRAMES or {}) do
         local frame = _G[name]
         if frame then
             local id = frame:GetID()
@@ -153,61 +158,98 @@ function SetupChat()
                 end
             elseif id == 2 then
                 CallGlobal("FCF_SetWindowName", frame, "Log")
-            elseif retail and id == 3 then
-                if config.enableVoiceFrame then
-                    CallGlobal("VoiceTranscriptionFrame_UpdateVisibility", frame)
-                    CallGlobal("VoiceTranscriptionFrame_UpdateVoiceTab", frame)
-                    CallGlobal("VoiceTranscriptionFrame_UpdateEditBox", frame)
-                end
+            elseif retail and id == 3 and config.enableVoiceFrame then
+                CallGlobal("VoiceTranscriptionFrame_UpdateVisibility", frame)
+                CallGlobal("VoiceTranscriptionFrame_UpdateVoiceTab", frame)
+                CallGlobal("VoiceTranscriptionFrame_UpdateEditBox", frame)
             end
         end
     end
+end
 
-    -- Configure ChatFrame1 (General)
+local function ConfigureGeneralFrame()
     local generalRemovals = {"COMBAT_XP_GAIN", "COMBAT_HONOR_GAIN", "COMBAT_FACTION_CHANGE", "LOOT", "TRADESKILL"}
     CallFrame(_G.ChatFrame1, "RemoveChannel", "Trade")
     CallFrame(_G.ChatFrame1, "RemoveChannel", "Services")
-    for _, v in ipairs(generalRemovals) do
-        CallFrame(_G.ChatFrame1, "RemoveMessageGroup", v)
+    for _, groupName in ipairs(generalRemovals) do
+        CallFrame(_G.ChatFrame1, "RemoveMessageGroup", groupName)
+    end
+end
+
+local function ConfigureLootFrame(lootFrame)
+    if not lootFrame then
+        return
     end
 
-    -- Configure Loot/Trade
-    if lootFrame then
-        CallFrame(lootFrame, "RemoveAllMessageGroups")
-        CallFrame(lootFrame, "RemoveAllChannels")
-        CallFrame(lootFrame, "AddMessageGroup", "CHANNEL")
-        CallFrame(lootFrame, "AddChannel", "Trade")
-        local lootGroups = {"COMBAT_XP_GAIN", "COMBAT_HONOR_GAIN", "COMBAT_FACTION_CHANGE", "SKILL", "LOOT", "CURRENCY", "MONEY", "TRADESKILL"}
-        for _, k in ipairs(lootGroups) do
-            CallFrame(lootFrame, "AddMessageGroup", k)
+    CallFrame(lootFrame, "RemoveAllMessageGroups")
+    CallFrame(lootFrame, "RemoveAllChannels")
+    CallFrame(lootFrame, "AddMessageGroup", "CHANNEL")
+    CallFrame(lootFrame, "AddChannel", "Trade")
+
+    local lootGroups = {"COMBAT_XP_GAIN", "COMBAT_HONOR_GAIN", "COMBAT_FACTION_CHANGE", "SKILL", "LOOT", "CURRENCY", "MONEY", "TRADESKILL"}
+    for _, groupName in ipairs(lootGroups) do
+        CallFrame(lootFrame, "AddMessageGroup", groupName)
+    end
+end
+
+local function ConfigureClassicLFGChannels(frame)
+    if GetLocale() ~= "enUS" then
+        if not warnedClassicLocale then
+            warnedClassicLocale = true
+            print("|cffffff00[CalmChat] Classic LFG auto-join currently supports enUS channel names only.|r")
         end
+        return
     end
 
-    -- Configure Services or LFG
-    if servicesOrLFGFrame then
-        CallFrame(servicesOrLFGFrame, "RemoveAllMessageGroups")
-        CallFrame(servicesOrLFGFrame, "RemoveAllChannels")
+    local _, lfgChannel = CallGlobal("JoinPermanentChannel", "LookingForGroup", nil, frame:GetID(), 1)
+    local _, layerChannel = CallGlobal("JoinPermanentChannel", "Layer", nil, frame:GetID(), 1)
+    CallFrame(frame, "AddMessageGroup", "CHANNEL")
+    CallFrame(frame, "AddChannel", lfgChannel or "LookingForGroup")
+    CallFrame(frame, "AddChannel", layerChannel or "Layer")
+end
 
-        if retail then
-            CallFrame(servicesOrLFGFrame, "AddMessageGroup", "CHANNEL")
-            CallFrame(servicesOrLFGFrame, "AddChannel", "Services")
-        elseif config.autoJoinClassicLFG and GetLocale() == "enUS" then
-            local _, lfgChannel = CallGlobal("JoinPermanentChannel", "LookingForGroup", nil, servicesOrLFGFrame:GetID(), 1)
-            local _, layerChannel = CallGlobal("JoinPermanentChannel", "Layer", nil, servicesOrLFGFrame:GetID(), 1)
-            CallFrame(servicesOrLFGFrame, "AddMessageGroup", "CHANNEL")
-            CallFrame(servicesOrLFGFrame, "AddChannel", lfgChannel or "LookingForGroup")
-            CallFrame(servicesOrLFGFrame, "AddChannel", layerChannel or "Layer")
-        end
-
-        if retail then
-            CallFrame(_G.ChatFrame1, "AddMessageGroup", "PING")
-        end
+local function ConfigureServicesOrLFGFrame(frame, retail, config)
+    if not frame then
+        return
     end
 
-    -- Select General tab and finish
+    CallFrame(frame, "RemoveAllMessageGroups")
+    CallFrame(frame, "RemoveAllChannels")
+
+    if retail then
+        CallFrame(frame, "AddMessageGroup", "CHANNEL")
+        CallFrame(frame, "AddChannel", "Services")
+    elseif config.autoJoinClassicLFG then
+        ConfigureClassicLFGChannels(frame)
+    end
+
+    if retail then
+        CallFrame(_G.ChatFrame1, "AddMessageGroup", "PING")
+    end
+end
+
+local function SelectGeneralWindow()
     if type(FCFDock_SelectWindow) == "function" and _G.GENERAL_CHAT_DOCK and _G.ChatFrame1 then
         FCFDock_SelectWindow(_G.GENERAL_CHAT_DOCK, _G.ChatFrame1)
     end
+end
+
+function SetupChat()
+    local config = EnsureSettings()
+    local retail = IsRetailClient()
+
+    if type(FCF_ResetChatWindows) ~= "function" or type(FCF_OpenNewWindow) ~= "function" then
+        print("|cffff2020[CalmChat] Blizzard chat window APIs are unavailable.|r")
+        return
+    end
+
+    ApplyChatCVars()
+    local lootFrame, servicesOrLFGFrame = CreateConfiguredFrames(config, retail)
+    ConfigureFrameTitles(lootFrame, servicesOrLFGFrame, retail, config)
+    ConfigureGeneralFrame()
+    ConfigureLootFrame(lootFrame)
+    ConfigureServicesOrLFGFrame(servicesOrLFGFrame, retail, config)
+    SelectGeneralWindow()
     print("|cffbe1c1c[CalmChat] Chat setup successful.|r")
 end
 

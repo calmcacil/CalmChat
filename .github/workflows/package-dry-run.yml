@@ -1,0 +1,40 @@
+name: Package dry run
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    package:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        env:
+            GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+
+        steps:
+          - name: Clone project
+            uses: actions/checkout@v4
+            with:
+                fetch-depth: 0
+
+          - name: Build dry-run package
+            uses: BigWigsMods/packager@v2
+            with:
+                args: -d
+
+          - name: Upload packaged artifact
+            uses: actions/upload-artifact@v4
+            with:
+                name: calmchat-package-dry-run
+                path: .release/
+                if-no-files-found: warn
