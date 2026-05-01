@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.1](https://github.com/calmcacil/CalmChat/compare/v2.2.0...v2.2.1) (2026-05-01)
+
+
+### CI
+
+* detect release commits from merge message body ([e84dfd6](https://github.com/calmcacil/CalmChat/commit/e84dfd6916e1368eab98986dfd012386f350d284))
+
 ## [2.2.0](https://github.com/calmcacil/CalmChat/compare/v2.1.2...v2.2.0) (2026-05-01)
 
 
