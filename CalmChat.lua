@@ -100,6 +100,8 @@ function SlashCmdList.CALMCHAT(msg)
     msg = msg and string.lower(string.match(msg, "^%s*(.-)%s*$")) or ""
     if msg == "config" or msg == "options" or msg == "settings" then
         OpenSettingsPanel()
+    elseif msg == "help" then
+        print("|cffbe1c1c[CalmChat]|r Usage: /calmchat to apply setup, /calmchat settings to open options.")
     else
         SetupChat()
     end
