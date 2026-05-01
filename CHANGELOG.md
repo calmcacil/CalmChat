@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.0](https://github.com/calmcacil/CalmChat/compare/v2.1.2...v2.2.0) (2026-05-01)
+
+
+### Features
+
+* add calmchat help command ([5648fe0](https://github.com/calmcacil/CalmChat/commit/5648fe06d64df4e2a19dda99825ffa6cd30ef0fd))
+
+
+### CI
+
+* fix release packaging trigger ([d57be3b](https://github.com/calmcacil/CalmChat/commit/d57be3b891b0dff2a0d7ccdce92a05369765fadf))
+* grant auto-tag workflow permission to relabel release PRs ([b349a67](https://github.com/calmcacil/CalmChat/commit/b349a6785ac88eae4ee8b2823032577f68af8e5d))
+* mark release PRs tagged after auto-tag ([61a0b59](https://github.com/calmcacil/CalmChat/commit/61a0b59021762d4a3aed91c9970bd89d17d349dd))
+* upload dry-run package artifacts ([4d716aa](https://github.com/calmcacil/CalmChat/commit/4d716aa7baeb895d95c6b4916f434ba683aff0f6))
+
 ## [2.1.2](https://github.com/calmcacil/CalmChat/compare/v2.1.1...v2.1.2) (2026-05-01)
 
 
