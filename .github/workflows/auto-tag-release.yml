@@ -4,6 +4,7 @@ on:
     push:
         branches:
             - main
+    workflow_dispatch:
 
 permissions:
     contents: write
@@ -14,9 +15,10 @@ concurrency:
 
 jobs:
     tag:
-        if: startsWith(github.event.head_commit.message, 'chore(main): release ')
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        env:
+            HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
         steps:
           - name: Clone project
@@ -28,6 +30,11 @@ jobs:
             shell: bash
             run: |
                 set -euo pipefail
+
+                if [[ ! "${HEAD_COMMIT_MESSAGE:-}" =~ ^chore\(main\):\ release\  ]]; then
+                    echo "Head commit is not a release-please commit. Skipping tag creation."
+                    exit 0
+                fi
 
                 [[ -f VERSION ]] || { echo "error: VERSION is missing" >&2; exit 1; }
                 version=$(tr -d '\r\n' < VERSION)

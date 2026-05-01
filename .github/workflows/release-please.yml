@@ -7,9 +7,9 @@ on:
     workflow_dispatch:
 
 permissions:
-    contents: write
-    pull-requests: write
-    issues: write
+    contents: read
+    pull-requests: read
+    issues: read
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,7 +21,25 @@ jobs:
         timeout-minutes: 10
 
         steps:
+          - name: Skip when workflow permissions cannot create PRs
+            id: permissions_check
+            shell: bash
+            env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            run: |
+                set -euo pipefail
+
+                can_approve=$(gh api repos/${GITHUB_REPOSITORY}/actions/permissions/workflow --jq '.can_approve_pull_request_reviews')
+                if [[ "$can_approve" != "true" ]]; then
+                    echo "Repository Actions setting 'Allow GitHub Actions to create and approve pull requests' is disabled."
+                    echo "Enable it before running release-please automation."
+                    echo "enabled=false" >> "$GITHUB_OUTPUT"
+                else
+                    echo "enabled=true" >> "$GITHUB_OUTPUT"
+                fi
+
           - name: Run release-please
+            if: steps.permissions_check.outputs.enabled == 'true'
             uses: googleapis/release-please-action@v4
             with:
                 token: ${{ secrets.GITHUB_TOKEN }}

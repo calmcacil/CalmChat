@@ -14,12 +14,26 @@ concurrency:
 
 jobs:
     protect-main:
-        if: ${{ secrets.BRANCH_PROTECTION_TOKEN != '' }}
         runs-on: ubuntu-latest
         timeout-minutes: 10
 
         steps:
+          - name: Check BRANCH_PROTECTION_TOKEN availability
+            id: token_check
+            shell: bash
+            env:
+                BRANCH_PROTECTION_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
+            run: |
+                set -euo pipefail
+                if [[ -z "${BRANCH_PROTECTION_TOKEN:-}" ]]; then
+                    echo "BRANCH_PROTECTION_TOKEN is not set. Skipping protection sync."
+                    echo "enabled=false" >> "$GITHUB_OUTPUT"
+                else
+                    echo "enabled=true" >> "$GITHUB_OUTPUT"
+                fi
+
           - name: Require checks on main
+            if: steps.token_check.outputs.enabled == 'true'
             shell: bash
             env:
                 GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
