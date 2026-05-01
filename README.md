@@ -64,7 +64,7 @@ After changing layout settings, run `/calmchat` to apply them immediately.
 ## Compatibility
 
 <!-- x-release-please-start-version -->
-**v2.1.1** supports **WoW Midnight 12.0.5** (current Retail)
+**v2.1.2** supports **WoW Midnight 12.0.5** (current Retail)
 <!-- x-release-please-end -->
 
 | Version | Status |
