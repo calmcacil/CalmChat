@@ -5,10 +5,14 @@ on:
         branches:
             - main
     workflow_dispatch:
+        inputs:
+            allow_current_head:
+                description: Allow tagging current HEAD even if it is not a release-please commit
+                required: false
+                type: boolean
+                default: false
 
-permissions:
-    contents: read
-    issues: write
+permissions: {}
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,10 +20,12 @@ concurrency:
 
 jobs:
     tag:
+        permissions:
+            contents: read
         runs-on: ubuntu-latest
         timeout-minutes: 10
         env:
-            HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+            ALLOW_CURRENT_HEAD: ${{ github.event.inputs.allow_current_head || 'false' }}
             RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
         steps:
@@ -28,7 +34,7 @@ jobs:
             with:
                 fetch-depth: 0
                 fetch-tags: true
-                token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+                token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
           - name: Validate VERSION and create tag
             shell: bash
@@ -43,10 +49,10 @@ jobs:
                 head_subject="$(git log -1 --pretty=%s)"
                 head_message="$(git log -1 --pretty=%B)"
 
-                if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+                if [[ "${GITHUB_EVENT_NAME}" == "push" || "${ALLOW_CURRENT_HEAD}" != "true" ]]; then
                     is_release_commit=false
                     while IFS= read -r line; do
-                        if [[ "$line" =~ ^chore\(main\):\ release\  ]]; then
+                        if [[ "$line" =~ ^chore\(main\):[[:space:]]release[[:space:]] ]]; then
                             is_release_commit=true
                             break
                         fi
