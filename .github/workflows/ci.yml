@@ -14,8 +14,39 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
+    changes:
+        name: changes
+        permissions:
+            contents: read
+            pull-requests: read
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        outputs:
+            should_run: ${{ steps.filter.outputs.code_or_release }}
+
+        steps:
+          - name: Clone project
+            uses: actions/checkout@v4
+            with:
+                fetch-depth: 0
+
+          - name: Detect code and release file changes
+            id: filter
+            uses: dorny/paths-filter@v3
+            with:
+                filters: |
+                    code_or_release:
+                      - '**/*.lua'
+                      - '**/*.toc'
+                      - 'scripts/**'
+                      - 'VERSION'
+                      - '.release-please-manifest.json'
+                      - 'release-please-config.json'
+
     static:
         name: static
+        needs: changes
+        if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.should_run == 'true'
         permissions:
             contents: read
         runs-on: ubuntu-latest
@@ -35,7 +66,10 @@ jobs:
 
     package:
         name: package
-        needs: static
+        needs:
+            - changes
+            - static
+        if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.should_run == 'true'
         permissions:
             contents: read
         runs-on: ubuntu-latest
