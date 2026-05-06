@@ -5,8 +5,7 @@ on:
     schedule:
         - cron: '37 4 * * 1'
 
-permissions:
-    contents: read
+permissions: {}
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,26 +13,23 @@ concurrency:
 
 jobs:
     protect-main:
+        permissions: {}
         runs-on: ubuntu-latest
         timeout-minutes: 10
 
         steps:
-          - name: Check BRANCH_PROTECTION_TOKEN availability
-            id: token_check
+          - name: Require BRANCH_PROTECTION_TOKEN
             shell: bash
             env:
                 BRANCH_PROTECTION_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
             run: |
                 set -euo pipefail
                 if [[ -z "${BRANCH_PROTECTION_TOKEN:-}" ]]; then
-                    echo "BRANCH_PROTECTION_TOKEN is not set. Skipping protection sync."
-                    echo "enabled=false" >> "$GITHUB_OUTPUT"
-                else
-                    echo "enabled=true" >> "$GITHUB_OUTPUT"
+                    echo "error: BRANCH_PROTECTION_TOKEN is required for branch protection sync." >&2
+                    exit 1
                 fi
 
           - name: Require checks on main
-            if: steps.token_check.outputs.enabled == 'true'
             shell: bash
             env:
                 GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
