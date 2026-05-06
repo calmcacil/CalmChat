@@ -66,23 +66,38 @@ grep -Eq "\*\*v${expected_version}\*\* supports \*\*WoW Midnight 12\.0\.5\*\*" R
 grep -q '^<!-- x-release-please-start-version -->$' README.md || fail 'README.md is missing release-please version start marker'
 grep -q '^<!-- x-release-please-end -->$' README.md || fail 'README.md is missing release-please version end marker'
 
-grep -q 'Settings.RegisterVerticalLayoutCategory(ADDON_NAME)' CalmChat.lua || fail 'Settings category registration is missing'
-grep -q 'Settings.RegisterAddOnSetting(category, variable, key, CalmChatDB, Settings.VarType.Boolean' CalmChat.lua || fail 'SavedVariable-backed settings registration is missing'
-grep -q 'Settings.CreateCheckbox(category, setting, tooltip)' CalmChat.lua || fail 'Settings checkbox creation is missing'
-grep -q 'Settings.OpenToCategory(settingsCategoryID)' CalmChat.lua || fail 'Settings open handler is missing'
-grep -q 'type(category.GetID) == "function" and category:GetID() or category.ID' CalmChat.lua || fail 'Settings category ID fallback is missing'
-grep -q 'SLASH_CALMCHAT1 = "/csetupchat"' CalmChat.lua || fail '/csetupchat slash alias is missing'
-grep -q 'SLASH_CALMCHAT2 = "/calmchat"' CalmChat.lua || fail '/calmchat slash alias is missing'
-grep -q 'function CalmChat_OnAddonCompartmentClick()' CalmChat.lua || fail 'Addon compartment click handler is missing'
-
-for key in enableServicesTab enableVoiceFrame autoJoinClassicLFG setupOnLogin; do
-    grep -q "$key" CalmChat.lua || fail "default setting '$key' is missing"
+for file in CalmChat.lua Defaults.lua Client.lua DB.lua PresetBuilder.lua ChatApply.lua Core.lua SettingsUI.lua Commands.lua Events.lua; do
+    [[ -f "$file" ]] || fail "$file is missing"
 done
 
+grep -q 'SLASH_CALMCHAT1 = "/csetupchat"' Commands.lua || fail '/csetupchat slash alias is missing'
+grep -q 'SLASH_CALMCHAT2 = "/calmchat"' Commands.lua || fail '/calmchat slash alias is missing'
+grep -q 'function CalmChat_OnAddonCompartmentClick()' Commands.lua || fail 'Addon compartment click handler is missing'
+
+grep -q 'function Addon.SetupChat()' Core.lua || fail 'Core setup function is missing'
+grep -q 'Settings.RegisterCanvasLayoutCategory' SettingsUI.lua || fail 'Settings category registration is missing'
+grep -q 'UIPanelButtonTemplate' SettingsUI.lua || fail 'Settings apply/reset buttons are missing'
+grep -q 'Creates and routes a dedicated Classic LFG tab' README.md || fail 'README settings table update is missing'
+
+for key in enableRetailServicesTab keepRetailVoiceFrame enableClassicLFGTab setupOnLogin resetBeforeApply; do
+    grep -q "$key" Defaults.lua || fail "default setting '$key' is missing"
+done
+
+grep -q 'classicChannelNames' Defaults.lua || fail 'classic channel default names are missing'
+grep -q 'version = Addon.SCHEMA_VERSION' Defaults.lua || fail 'schema version default is missing'
+
+if grep -R --include='*.lua' -q 'OnUpdate' .; then
+    fail 'OnUpdate usage detected'
+fi
+
 if command -v luac5.1 >/dev/null 2>&1; then
-    luac5.1 -p CalmChat.lua
+    for file in CalmChat.lua Defaults.lua Client.lua DB.lua PresetBuilder.lua ChatApply.lua Core.lua SettingsUI.lua Commands.lua Events.lua; do
+        luac5.1 -p "$file"
+    done
 elif command -v luac >/dev/null 2>&1; then
-    luac -p CalmChat.lua
+    for file in CalmChat.lua Defaults.lua Client.lua DB.lua PresetBuilder.lua ChatApply.lua Core.lua SettingsUI.lua Commands.lua Events.lua; do
+        luac -p "$file"
+    done
 else
     fail 'luac is not installed'
 fi

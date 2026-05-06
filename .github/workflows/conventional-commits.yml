@@ -61,7 +61,7 @@ jobs:
                 page=1
 
                 while :; do
-                    response=$(curl -fsSL \
+                    response=$(curl -fsS --retry 6 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
                         -H "Accept: application/vnd.github+json" \
                         -H "Authorization: Bearer ${GH_TOKEN}" \
                         "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}/commits?per_page=100&page=${page}")
