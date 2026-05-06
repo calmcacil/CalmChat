@@ -14,7 +14,8 @@ concurrency:
 
 jobs:
     release-please:
-        permissions: {}
+        permissions:
+            contents: read
         runs-on: ubuntu-latest
         timeout-minutes: 10
 
@@ -31,7 +32,37 @@ jobs:
                     exit 1
                 fi
 
+          - name: Clone project
+            uses: actions/checkout@v4
+            with:
+                fetch-depth: 0
+                fetch-tags: true
+
+          - name: Detect releasable commits
+            id: releasable
+            shell: bash
+            run: |
+                set -euo pipefail
+
+                releasable_regex='^(feat|fix|perf|refactor)(\([a-z0-9._/-]+\))?(!)?: .+'
+                last_tag="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+
+                if [[ -n "$last_tag" ]]; then
+                    range="${last_tag}..HEAD"
+                else
+                    range="HEAD"
+                fi
+
+                if git log --format=%s "$range" | grep -Eq "$releasable_regex"; then
+                    echo "enabled=true" >> "$GITHUB_OUTPUT"
+                    echo "Found releasable commits in $range."
+                else
+                    echo "enabled=false" >> "$GITHUB_OUTPUT"
+                    echo "No releasable commits (feat|fix|perf|refactor) found in $range."
+                fi
+
           - name: Run release-please
+            if: steps.releasable.outputs.enabled == 'true'
             uses: googleapis/release-please-action@v4
             with:
                 token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
