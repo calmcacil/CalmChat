@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.2](https://github.com/calmcacil/CalmChat/compare/v2.2.1...v2.2.2) (2026-05-06)
+
+
+### CI
+
+* **workflows:** harden and consolidate github actions pipelines ([#5](https://github.com/calmcacil/CalmChat/issues/5)) ([151fea6](https://github.com/calmcacil/CalmChat/commit/151fea6377ab68ee3fe2624fec7ee623f455d589))
+
 ## [2.2.1](https://github.com/calmcacil/CalmChat/compare/v2.2.0...v2.2.1) (2026-05-01)
 
 
