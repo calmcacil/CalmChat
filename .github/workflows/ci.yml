@@ -1,4 +1,4 @@
-name: Package dry run
+name: CI
 
 on:
     push:
@@ -7,19 +7,41 @@ on:
     pull_request:
     workflow_dispatch:
 
-permissions:
-    contents: read
+permissions: {}
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
     cancel-in-progress: true
 
 jobs:
+    static:
+        name: static
+        permissions:
+            contents: read
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+          - name: Clone project
+            uses: actions/checkout@v4
+
+          - name: Install Lua 5.1
+            run: |
+                sudo apt-get update
+                sudo apt-get install -y --no-install-recommends lua5.1
+
+          - name: Run static checks
+            run: bash scripts/check-static.sh
+
     package:
+        name: package
+        needs: static
+        permissions:
+            contents: read
         runs-on: ubuntu-latest
         timeout-minutes: 10
         env:
-            GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+            GITHUB_OAUTH: ${{ github.token }}
 
         steps:
           - name: Clone project
@@ -39,5 +61,5 @@ jobs:
                 path: |
                     .release/*.zip
                     .release/**/*.zip
-                if-no-files-found: warn
+                if-no-files-found: error
                 include-hidden-files: true

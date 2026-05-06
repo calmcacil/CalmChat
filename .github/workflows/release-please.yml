@@ -6,10 +6,7 @@ on:
             - main
     workflow_dispatch:
 
-permissions:
-    contents: read
-    pull-requests: read
-    issues: read
+permissions: {}
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,12 +14,12 @@ concurrency:
 
 jobs:
     release-please:
+        permissions: {}
         runs-on: ubuntu-latest
         timeout-minutes: 10
 
         steps:
-          - name: Check RELEASE_PLEASE_TOKEN availability
-            id: token_check
+          - name: Require RELEASE_PLEASE_TOKEN
             shell: bash
             env:
                 RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
@@ -30,14 +27,11 @@ jobs:
                 set -euo pipefail
 
                 if [[ -z "${RELEASE_PLEASE_TOKEN:-}" ]]; then
-                    echo "RELEASE_PLEASE_TOKEN is not set. Skipping release-please PR automation."
-                    echo "enabled=false" >> "$GITHUB_OUTPUT"
-                else
-                    echo "enabled=true" >> "$GITHUB_OUTPUT"
+                    echo "error: RELEASE_PLEASE_TOKEN is required for release-please automation." >&2
+                    exit 1
                 fi
 
           - name: Run release-please
-            if: steps.token_check.outputs.enabled == 'true'
             uses: googleapis/release-please-action@v4
             with:
                 token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
