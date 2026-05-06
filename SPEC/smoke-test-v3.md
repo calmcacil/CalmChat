@@ -16,7 +16,7 @@ Run on each target client (Retail + at least one Classic target):
 2. `/calmchat settings`
    - Expected: CalmChat options panel opens.
 3. `/calmchat`
-   - Expected: `[CalmChat] Chat setup successful.`
+    - Expected: `[CalmChat] Chat setup successful.`
 4. Addon compartment click
    - Expected: opens settings; if settings cannot open, falls back to apply.
 
@@ -48,7 +48,9 @@ Run on each target client (Retail + at least one Classic target):
 1. Enable **Run setup after login or reload**.
 2. `/reload`.
 3. Verify:
-   - Setup auto-runs once shortly after login and prints success message.
+    - Setup auto-runs only when `initializedPresetVersion` is behind the current preset version.
+    - When auto-apply runs, chat prints: `[CalmChat] Applied chat setup for this character on login.`
+    - When no auto-apply is needed for the current preset version, no login apply message is printed.
 
 ## 4) Classic Smoke Flow (Era/SoD/TBC/Wrath/Cata/Mists)
 
@@ -76,21 +78,30 @@ Run on each target client (Retail + at least one Classic target):
 3. Verify configured names are used in the LFG tab.
 
 ## 5) Settings UI Coverage
-Verify each of these controls exists and persists after `/reload`:
+Verify settings visibility and persistence after `/reload`:
 
-- Run setup after login or reload
-- Always reset chat windows before apply
-- Keep Retail voice transcription frame
-- Enable Retail Services tab
-- Enable Classic LFG tab
-- Auto-join Classic LFG channels
-- Classic LFG channel name
-- Classic Layer channel name
-- Loot/Trade tab label
-- Services tab label
-- LFG tab label
-- Apply Chat Layout button
-- Reset To Calm Defaults button
+- Controls shown on all clients:
+  - Run setup after login or reload
+  - Always reset chat windows before apply
+  - Chat font size
+  - Keep Retail voice transcription frame
+  - Enable Retail Services tab
+  - Loot/Trade tab label
+  - Apply Chat Layout button
+  - Reset To Calm Defaults button
+
+- Client-aware visibility:
+  - Retail: Classic section controls are hidden; `Services tab label` is shown; `LFG tab label` is hidden.
+  - Classic: Classic section controls are shown; `LFG tab label` is shown; `Services tab label` is hidden.
+
+- Classic-only controls (Classic clients):
+  - Enable Classic LFG tab
+  - Auto-join Classic LFG channels
+  - Classic LFG channel name
+  - Classic Layer channel name
+
+- Value persistence:
+  - Enter values, `/reload`, and confirm the same values are present.
 
 ## 6) Legacy Migration Check (v2 -> v3)
 Use a test profile/character for this check.

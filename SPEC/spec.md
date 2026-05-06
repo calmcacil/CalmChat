@@ -8,6 +8,7 @@
 ## 1) Goals
 - Preserve current CalmChat behavior as the default preset.
 - Keep account-wide settings (`CalmChatDB`) as requested.
+- Keep preset auto-initialization account-wide per preset version.
 - Keep full chat reset as the default apply behavior.
 - Expand Blizzard Settings integration so non-technical users can configure tabs and routing.
 - Refactor into maintainable modules with minimal global exposure.
@@ -115,15 +116,17 @@ Note: TOC load order should be explicit and deterministic once split.
   - `CalmChat_OnAddonCompartmentClick` (TOC requirement)
 - Keep apply internals private (local functions / namespaced methods).
 
-## 6) Data Model v2 (Account-Wide)
+## 6) Data Model v3 (Account-Wide)
 
 ### 6.1 Schema
 ```lua
 CalmChatDB = {
-  version = 2,
+  version = 3,
+  initializedPresetVersion = 0,
   settings = {
     setupOnLogin = false,
     resetBeforeApply = true,
+    chatFontSize = 14,
     keepRetailVoiceFrame = true,
     enableRetailServicesTab = false,
     enableClassicLFGTab = true,
@@ -167,9 +170,17 @@ CalmChatDB = {
 }
 ```
 
-### 6.2 Migration Strategy
+### 6.2 Preset Initialization Gate (Account Scope)
+- `initializedPresetVersion` tracks the latest preset version auto-applied for the account.
+- On login, when `settings.setupOnLogin` is enabled, CalmChat applies only when:
+  - `initializedPresetVersion < Addon.PRESET_VERSION`
+- After a successful apply, CalmChat sets `initializedPresetVersion = Addon.PRESET_VERSION`.
+- Manual apply (`/calmchat` or settings Apply button) always runs and also updates `initializedPresetVersion`.
+- This behavior is intentionally account-wide (not per character) to avoid repeated auto-apply on every character for the same preset version.
+
+### 6.3 Migration Strategy
 - Add `DB:Initialize()` and `DB:Migrate(fromVersion)`.
-- Map legacy booleans to v2 keys on first run.
+- Map legacy booleans to v3 keys on first run.
 - Preserve user intent:
   - `enableServicesTab` -> `enableRetailServicesTab`
   - `enableVoiceFrame` -> `keepRetailVoiceFrame`
@@ -189,6 +200,7 @@ CalmChatDB = {
 ### 7.2 Controls (First Pass)
 - Checkbox: Run setup after login/reload.
 - Checkbox: Always reset chat windows before apply (default true).
+- Edit box: Chat font size (numeric, clamped to configured min/max).
 - Checkbox: Keep Retail voice transcription frame.
 - Checkbox: Enable Retail Services tab.
 - Checkbox: Enable Classic LFG tab.
@@ -203,6 +215,9 @@ CalmChatDB = {
 ### 7.3 UX Behavior
 - Changing controls updates DB values only.
 - Layout changes take effect on Apply button or `/calmchat`.
+- Control visibility is client-aware:
+  - Retail hides Classic-only controls.
+  - Classic hides the Retail Services tab label field.
 - Success and error messages remain concise and actionable.
 
 ## 8) Apply Engine Blueprint
@@ -248,7 +263,8 @@ CalmChatDB = {
 - `/calmchat` applies default layout on each supported client branch.
 - `/calmchat settings` opens panel where available.
 - Addon compartment click opens settings or falls back safely.
-- `setupOnLogin` applies once after login when enabled.
+- `setupOnLogin` applies only when `initializedPresetVersion` is behind `Addon.PRESET_VERSION`.
+- Login auto-apply emits a dedicated message only when an apply occurred.
 - Retail Services tab behavior matches toggle.
 - Classic LFG auto-join obeys toggle and channel names.
 
@@ -259,7 +275,7 @@ CalmChatDB = {
 
 ## 12) Delivery Phases
 1. Refactor scaffolding and module split with no behavior change.
-2. Introduce v2 DB schema and migration layer.
+2. Introduce v3 DB schema and migration layer.
 3. Implement data-driven preset builder and apply engine.
 4. Expand Blizzard Settings UI controls and apply/reset actions.
 5. Validate across Retail + Classic TOC targets.
