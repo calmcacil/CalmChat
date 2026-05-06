@@ -54,17 +54,22 @@ Open **Options > AddOns > CalmChat** or run `/calmchat config`.
 
 | Setting | Default | Behavior |
 |---------|---------|----------|
-| Create Services tab on Retail | Off | Adds a dedicated Services tab when setup runs on Retail |
-| Keep Retail voice transcription frame | On | Preserves Blizzard's Retail voice transcription tab during setup |
-| Auto-join Classic LFG channels | On | Joins and routes `LookingForGroup`/`Layer` on English Classic clients |
 | Run setup after login or reload | Off | Applies the preset shortly after `PLAYER_LOGIN` |
+| Always reset chat windows before apply | On | Keeps deterministic full-reset behavior before routing |
+| Chat font size | 14 | Sets all chat window font sizes during setup (range 8-24) |
+| Keep Retail voice transcription frame | On | Preserves Blizzard's Retail voice transcription tab during setup |
+| Enable Retail Services tab | Off | Adds a dedicated Services tab when setup runs on Retail |
+| Enable Classic LFG tab | On | Creates and routes a dedicated Classic LFG tab |
+| Auto-join Classic LFG channels | On | Joins configured LFG channels on English Classic clients |
+| Classic LFG/Layer channel names | LookingForGroup/Layer | Lets you configure channel names used by Classic LFG routing |
+| Loot/Trade, Services, LFG tab labels | Loot/Trade, Services, LFG | Lets you customize tab names without editing Lua |
 
-After changing layout settings, run `/calmchat` to apply them immediately.
+Use **Apply Chat Layout** in settings (or run `/calmchat`) to apply changes immediately.
 
 ## Compatibility
 
 <!-- x-release-please-start-version -->
-**v2.2.1** supports **WoW Midnight 12.0.5** (current Retail)
+**v3.0.0** supports **WoW Midnight 12.0.5** (current Retail)
 <!-- x-release-please-end -->
 
 | Version | Status |
@@ -87,6 +92,16 @@ After changing layout settings, run `/calmchat` to apply them immediately.
 | `CalmChat_Wrath.toc` | Titan Reforged |
 | `CalmChat_TBC.toc` | Burning Crusade Classic |
 | `CalmChat_Vanilla.toc` | Classic Era/Season of Discovery |
+
+## Contributing (Quick Start)
+
+- Read `AGENTS.md` before changing code, CI, or release files.
+- Create a branch from `main` using `<type>/<short-kebab-summary>`.
+- Use Conventional Commits for every commit and PR title, for example `fix(chat-routing): preserve trade tab filters`.
+- Keep each branch focused on one logical change to keep history and changelog clean.
+- Run `bash scripts/check-static.sh` before opening or updating a PR.
+- Do not hand-edit `CHANGELOG.md`; release automation manages changelog entries and version bumps.
+- For release metadata updates, keep `VERSION`, `.release-please-manifest.json`, `CalmChat*.toc`, and the README version marker block in sync.
 
 ## Troubleshooting
 
