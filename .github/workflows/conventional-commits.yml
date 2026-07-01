@@ -8,82 +8,62 @@ on:
             - synchronize
             - reopened
 
-permissions: {}
+permissions:
+    pull-requests: read
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
     cancel-in-progress: true
 
 jobs:
-    lint:
-        permissions:
-            pull-requests: read
+    conventional:
+        name: conventional
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+            PR_TITLE: ${{ github.event.pull_request.title }}
+            REPO: ${{ github.repository }}
 
         steps:
-          - name: Validate PR title as Conventional Commit
-            uses: amannn/action-semantic-pull-request@v5
-            env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            with:
-                types: |
-                    feat
-                    fix
-                    refactor
-                    perf
-                    docs
-                    chore
-                    ci
-                    test
-                    build
-                requireScope: false
-                subjectPattern: ^[a-z].+$
-                wip: false
+            - name: Validate PR title and commits
+              shell: bash
+              run: |
+                  set -euo pipefail
 
-    commit_messages:
-        permissions:
-            pull-requests: read
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
+                  regex='^(feat|fix|refactor|perf|docs|chore|ci|test|build)(\([a-z0-9._/-]+\))?(!)?: [a-z].+'
 
-        steps:
-          - name: Validate PR commits follow Conventional Commits
-            shell: bash
-            env:
-                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                REPO: ${{ github.repository }}
-                PR_NUMBER: ${{ github.event.pull_request.number }}
-            run: |
-                set -euo pipefail
+                  if [[ ! "$PR_TITLE" =~ $regex ]]; then
+                      echo "error: PR title '$PR_TITLE' is not a conventional commit" >&2
+                      exit 1
+                  fi
 
-                regex='^(feat|fix|refactor|perf|docs|chore|ci|test|build)(\([a-z0-9._/-]+\))?(!)?: .+'
-                page=1
+                  page=1
+                  while :; do
+                      response=$(curl -fsS --retry 6 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+                          -H "Accept: application/vnd.github+json" \
+                          -H "Authorization: Bearer ${GH_TOKEN}" \
+                          "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}/commits?per_page=100&page=${page}")
 
-                while :; do
-                    response=$(curl -fsS --retry 6 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-                        -H "Accept: application/vnd.github+json" \
-                        -H "Authorization: Bearer ${GH_TOKEN}" \
-                        "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}/commits?per_page=100&page=${page}")
+                      count=$(printf '%s' "$response" | jq 'length')
+                      if [[ "$count" -eq 0 ]]; then
+                          break
+                      fi
 
-                    count=$(printf '%s' "$response" | jq 'length')
-                    if [[ "$count" -eq 0 ]]; then
-                        break
-                    fi
+                      subjects=$(printf '%s' "$response" | jq -r '.[].commit.message | split("\n")[0]')
+                      while IFS= read -r subject; do
+                          [[ -n "$subject" ]] || continue
 
-                    subjects=$(printf '%s' "$response" | jq -r '.[].commit.message | split("\n")[0]')
-                    while IFS= read -r subject; do
-                        [[ -n "$subject" ]] || continue
+                          if [[ "$subject" =~ ^Merge[[:space:]] ]] || [[ "$subject" =~ ^Revert[[:space:]] ]]; then
+                              continue
+                          fi
 
-                        if [[ "$subject" =~ ^Merge[[:space:]] ]] || [[ "$subject" =~ ^Revert[[:space:]] ]]; then
-                            continue
-                        fi
+                          if [[ ! "$subject" =~ $regex ]]; then
+                              echo "error: commit subject '$subject' is not a conventional commit" >&2
+                              exit 1
+                          fi
+                      done <<< "$subjects"
 
-                        if [[ ! "$subject" =~ $regex ]]; then
-                            echo "error: commit subject '$subject' is not a conventional commit" >&2
-                            exit 1
-                        fi
-                    done <<< "$subjects"
-
-                    page=$((page + 1))
-                done
+                      page=$((page + 1))
+                  done

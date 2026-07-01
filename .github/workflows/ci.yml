@@ -4,10 +4,23 @@ on:
     push:
         branches:
             - main
+        paths-ignore:
+            - '*.md'
+            - 'docs/**'
+            - 'LICENSE'
+            - 'NOTICE'
     pull_request:
+        branches:
+            - main
+        paths-ignore:
+            - '*.md'
+            - 'docs/**'
+            - 'LICENSE'
+            - 'NOTICE'
     workflow_dispatch:
 
-permissions: {}
+permissions:
+    contents: read
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -25,23 +38,25 @@ jobs:
             should_run: ${{ steps.filter.outputs.code_or_release }}
 
         steps:
-          - name: Clone project
-            uses: actions/checkout@v4
-            with:
-                fetch-depth: 0
+            - name: Clone project
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-          - name: Detect code and release file changes
-            id: filter
-            uses: dorny/paths-filter@v3
-            with:
-                filters: |
-                    code_or_release:
-                      - '**/*.lua'
-                      - '**/*.toc'
-                      - 'scripts/**'
-                      - 'VERSION'
-                      - '.release-please-manifest.json'
-                      - 'release-please-config.json'
+            - name: Detect code and release file changes
+              id: filter
+              uses: dorny/paths-filter@v3
+              with:
+                  filters: |
+                      code_or_release:
+                          - '**/*.lua'
+                          - '**/*.toc'
+                          - 'scripts/**'
+                          - 'VERSION'
+                          - '.release-please-manifest.json'
+                          - 'release-please-config.json'
+                          - '.github/workflows/*.yml'
+                          - '.github/workflows/**/*.yml'
 
     static:
         name: static
@@ -53,16 +68,16 @@ jobs:
         timeout-minutes: 10
 
         steps:
-          - name: Clone project
-            uses: actions/checkout@v4
+            - name: Clone project
+              uses: actions/checkout@v4
 
-          - name: Install Lua 5.1
-            run: |
-                sudo apt-get update
-                sudo apt-get install -y --no-install-recommends lua5.1
+            - name: Install Lua 5.1
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y --no-install-recommends lua5.1
 
-          - name: Run static checks
-            run: bash scripts/check-static.sh
+            - name: Run static checks
+              run: bash scripts/check-static.sh
 
     package:
         name: package
@@ -78,22 +93,42 @@ jobs:
             GITHUB_OAUTH: ${{ github.token }}
 
         steps:
-          - name: Clone project
-            uses: actions/checkout@v4
-            with:
-                fetch-depth: 0
+            - name: Clone project
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-          - name: Build dry-run package
-            uses: BigWigsMods/packager@v2
-            with:
-                args: -d
+            - name: Build dry-run package
+              uses: BigWigsMods/packager@v2
+              with:
+                  args: -d
 
-          - name: Upload packaged artifact
-            uses: actions/upload-artifact@v4
-            with:
-                name: calmchat-package-dry-run
-                path: |
-                    .release/*.zip
-                    .release/**/*.zip
-                if-no-files-found: warn
-                include-hidden-files: true
+            - name: Upload packaged artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: calmchat-package-dry-run
+                  path: |
+                      .release/*.zip
+                      .release/**/*.zip
+                  if-no-files-found: warn
+                  include-hidden-files: true
+
+    required:
+        name: required
+        if: always()
+        needs:
+            - changes
+            - static
+            - package
+        runs-on: ubuntu-latest
+        timeout-minutes: 2
+
+        steps:
+            - name: Ensure required checks passed
+              run: |
+                  if [ "${{ needs.changes.result }}" = "failure" ] ||
+                     [ "${{ needs.static.result }}" = "failure" ] ||
+                     [ "${{ needs.package.result }}" = "failure" ]; then
+                      echo "One or more required checks failed"
+                      exit 1
+                  fi
