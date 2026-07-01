@@ -5,12 +5,6 @@ on:
         branches:
             - main
     workflow_dispatch:
-        inputs:
-            allow_current_head:
-                description: Allow tagging current HEAD even if it is not a release-please commit
-                required: false
-                type: boolean
-                default: false
 
 permissions: {}
 
@@ -21,105 +15,59 @@ concurrency:
 jobs:
     tag:
         permissions:
-            contents: read
+            contents: write
         runs-on: ubuntu-latest
-        timeout-minutes: 10
+        timeout-minutes: 5
         env:
-            ALLOW_CURRENT_HEAD: ${{ github.event.inputs.allow_current_head || 'false' }}
             RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
         steps:
-          - name: Clone project
-            uses: actions/checkout@v4
-            with:
-                fetch-depth: 0
-                fetch-tags: true
-                token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+            - name: Clone project
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  fetch-tags: true
+                  token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
-          - name: Validate VERSION and create tag
-            shell: bash
-            run: |
-                set -euo pipefail
+            - name: Create release tag
+              shell: bash
+              run: |
+                  set -euo pipefail
 
-                if [[ -z "${RELEASE_PLEASE_TOKEN:-}" ]]; then
-                    echo "error: RELEASE_PLEASE_TOKEN is required so the tag push can trigger the package release workflow." >&2
-                    exit 1
-                fi
+                  if [[ -z "${RELEASE_PLEASE_TOKEN:-}" ]]; then
+                      echo "error: RELEASE_PLEASE_TOKEN is required so the tag push can trigger release packaging." >&2
+                      exit 1
+                  fi
 
-                head_subject="$(git log -1 --pretty=%s)"
-                head_message="$(git log -1 --pretty=%B)"
+                  head_message="$(git log -1 --pretty=%B)"
+                  is_release_commit=false
+                  while IFS= read -r line; do
+                      if [[ "$line" =~ ^chore\(main\):[[:space:]]release[[:space:]] ]]; then
+                          is_release_commit=true
+                          break
+                      fi
+                  done <<< "$head_message"
 
-                if [[ "${GITHUB_EVENT_NAME}" == "push" || "${ALLOW_CURRENT_HEAD}" != "true" ]]; then
-                    is_release_commit=false
-                    while IFS= read -r line; do
-                        if [[ "$line" =~ ^chore\(main\):[[:space:]]release[[:space:]] ]]; then
-                            is_release_commit=true
-                            break
-                        fi
-                    done <<< "$head_message"
+                  if [[ "$is_release_commit" != true ]]; then
+                      echo "Head commit is not a release-please commit. Skipping tag creation."
+                      exit 0
+                  fi
 
-                    if [[ "$is_release_commit" != true ]]; then
-                        echo "Head commit is not a release-please commit. Skipping tag creation."
-                        exit 0
-                    fi
-                fi
+                  [[ -f VERSION ]] || { echo "error: VERSION is missing" >&2; exit 1; }
+                  version=$(tr -d '\r\n' < VERSION)
+                  semver_regex='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+                  if [[ ! "$version" =~ $semver_regex ]]; then
+                      echo "error: VERSION '$version' is not valid semantic versioning" >&2
+                      exit 1
+                  fi
 
-                [[ -f VERSION ]] || { echo "error: VERSION is missing" >&2; exit 1; }
-                version=$(tr -d '\r\n' < VERSION)
-                semver_regex='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
-                if [[ ! "$version" =~ $semver_regex ]]; then
-                    echo "error: VERSION '$version' is not valid semantic versioning" >&2
-                    exit 1
-                fi
+                  tag="v${version}"
+                  if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+                      echo "Tag $tag already exists. Nothing to do."
+                      exit 0
+                  fi
 
-                tag="v${version}"
-                if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-                    echo "Tag $tag already exists. Nothing to do."
-                    exit 0
-                fi
-
-                git config user.name github-actions[bot]
-                git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-                git tag -a "$tag" -m "$tag"
-                git push origin "$tag"
-
-          - name: Mark release PR as tagged
-            shell: bash
-            env:
-                GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-            run: |
-                set -euo pipefail
-
-                if [[ -z "${GH_TOKEN:-}" ]]; then
-                    echo "error: RELEASE_PLEASE_TOKEN is required to update release PR labels." >&2
-                    exit 1
-                fi
-
-                if [[ "${GITHUB_EVENT_NAME}" != "push" ]]; then
-                    echo "Manual run detected. Skipping release PR label update."
-                    exit 0
-                fi
-
-                head_subject="$(git log -1 --pretty=%s)"
-                head_message="$(git log -1 --pretty=%B)"
-
-                pr_number=""
-                if [[ "$head_subject" =~ ^Merge\ pull\ request\ \#([0-9]+)\ from\  ]]; then
-                    pr_number="${BASH_REMATCH[1]}"
-                else
-                    while IFS= read -r line; do
-                        if [[ "$line" =~ ^chore\(main\):\ release\ .*\ \(#([0-9]+)\)$ ]]; then
-                            pr_number="${BASH_REMATCH[1]}"
-                            break
-                        fi
-                    done <<< "$head_message"
-                fi
-
-                if [[ -z "$pr_number" ]]; then
-                    echo "Head commit is not a release-please merge commit. Skipping label update."
-                    exit 0
-                fi
-
-                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/labels/autorelease%3A%20pending" >/dev/null || true
-
-                echo "Removed autorelease: pending label from release PR #${pr_number}."
+                  git config user.name github-actions[bot]
+                  git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+                  git tag -a "$tag" -m "$tag"
+                  git push origin "$tag"
