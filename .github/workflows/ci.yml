@@ -1,134 +1,93 @@
 name: CI
 
 on:
-    push:
-        branches:
-            - main
-        paths-ignore:
-            - '*.md'
-            - 'docs/**'
-            - 'LICENSE'
-            - 'NOTICE'
-    pull_request:
-        branches:
-            - main
-        paths-ignore:
-            - '*.md'
-            - 'docs/**'
-            - 'LICENSE'
-            - 'NOTICE'
-    workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-    cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.25.12"
 
 jobs:
-    changes:
-        name: changes
-        permissions:
-            contents: read
-            pull-requests: read
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        outputs:
-            should_run: ${{ steps.filter.outputs.code_or_release }}
-
-        steps:
-            - name: Clone project
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-
-            - name: Detect code and release file changes
-              id: filter
-              uses: dorny/paths-filter@v3
-              with:
-                  filters: |
-                      code_or_release:
-                          - '**/*.lua'
-                          - '**/*.toc'
-                          - 'scripts/**'
-                          - 'VERSION'
-                          - '.release-please-manifest.json'
-                          - 'release-please-config.json'
-                          - '.github/workflows/*.yml'
-                          - '.github/workflows/**/*.yml'
-
-    static:
-        name: static
-        needs: changes
-        if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.should_run == 'true'
-        permissions:
-            contents: read
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-
-        steps:
-            - name: Clone project
-              uses: actions/checkout@v4
-
-            - name: Install Lua 5.1
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y --no-install-recommends lua5.1
-
-            - name: Run static checks
-              run: bash scripts/check-static.sh
-
-    package:
-        name: package
-        needs:
-            - changes
-            - static
-        if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.should_run == 'true'
-        permissions:
-            contents: read
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lua5.1
+      - name: Set up Go for actionlint
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - name: Run repository checks
+        run: bash scripts/check.sh
+      - name: Validate conventional PR title
+        if: github.event_name == 'pull_request'
         env:
-            GITHUB_OAUTH: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          pattern='^(feat|fix|refactor|perf|docs|chore|ci|test|build)(\([a-z0-9._/-]+\))?(!)?: .+'
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "::error::PR title must use Conventional Commits, for example 'ci(workflows): replace release flow'."
+            exit 1
+          fi
 
-        steps:
-            - name: Clone project
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
+  package:
+    name: Package snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITHUB_OAUTH: ${{ github.token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Build dry-run package
+        uses: BigWigsMods/packager@6d50adb6e8517eefef63f4afb16a6518166a6b28 # v2.5.1
+        with:
+          args: -d
+      - name: Verify package compatibility
+        run: bash scripts/check-package.sh
+      - name: Upload package snapshot
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: calmchat-package-snapshot
+          path: .release/*.zip
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 7
 
-            - name: Build dry-run package
-              uses: BigWigsMods/packager@v2
-              with:
-                  args: -d
-
-            - name: Upload packaged artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: calmchat-package-dry-run
-                  path: |
-                      .release/*.zip
-                      .release/**/*.zip
-                  if-no-files-found: warn
-                  include-hidden-files: true
-
-    required:
-        name: required
-        if: always()
-        needs:
-            - changes
-            - static
-            - package
-        runs-on: ubuntu-latest
-        timeout-minutes: 2
-
-        steps:
-            - name: Ensure required checks passed
-              run: |
-                  if [ "${{ needs.changes.result }}" = "failure" ] ||
-                     [ "${{ needs.static.result }}" = "failure" ] ||
-                     [ "${{ needs.package.result }}" = "failure" ]; then
-                      echo "One or more required checks failed"
-                      exit 1
-                  fi
+  required:
+    name: Required
+    if: always()
+    needs: [quality, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ensure required jobs passed
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          PACKAGE_RESULT: ${{ needs.package.result }}
+        shell: bash
+        run: |
+          if [[ "$QUALITY_RESULT" != success || "$PACKAGE_RESULT" != success ]]; then
+            echo "::error::One or more required jobs did not pass."
+            exit 1
+          fi

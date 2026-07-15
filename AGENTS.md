@@ -44,9 +44,11 @@ This file defines how coding agents should work in this repository.
 ## Required Validation
 
 - Run local checks before finalizing a change when possible:
-  - `bash scripts/check-static.sh`
+  - `bash scripts/check.sh`
 - Ensure `.toc` files still include required release markers and correct `## Version`.
 - Ensure README compatibility version text remains aligned with `VERSION`.
+- CI must preserve the BigWigs multi-client archive contract documented in `docs/CI_RELEASES.md`.
+- CodeQL and dependency review are not applicable while this remains a dependency-free Lua addon; reassess if supported code or package manifests are added.
 
 ## Safety and Change Scope
 

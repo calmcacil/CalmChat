@@ -4,7 +4,7 @@ Describe what changed and why.
 
 ## Validation
 
-- [ ] I ran `bash scripts/check-static.sh` locally.
+- [ ] I ran `bash scripts/check.sh` locally.
 - [ ] I verified CI checks relevant to this PR are green.
 
 ## Workflow Checklist

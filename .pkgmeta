@@ -1,0 +1,7 @@
+ignore:
+  - CONTRIBUTING.md
+  - SECURITY.md
+  - docs
+  - scripts/check.sh
+  - scripts/check-package.sh
+  - scripts/publish-assets.sh

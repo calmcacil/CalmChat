@@ -99,9 +99,10 @@ Use **Apply Chat Layout** in settings (or run `/calmchat`) to apply changes imme
 - Create a branch from `main` using `<type>/<short-kebab-summary>`.
 - Use Conventional Commits for every commit and PR title, for example `fix(chat-routing): preserve trade tab filters`.
 - Keep each branch focused on one logical change to keep history and changelog clean.
-- Run `bash scripts/check-static.sh` before opening or updating a PR.
+- Run `bash scripts/check.sh` before opening or updating a PR.
 - Do not hand-edit `CHANGELOG.md`; release automation manages changelog entries and version bumps.
 - For release metadata updates, keep `VERSION`, `.release-please-manifest.json`, `CalmChat*.toc`, and the README version marker block in sync.
+- See [CI and releases](docs/CI_RELEASES.md) for the package contract, release setup, recovery, and rollback.
 
 ## Troubleshooting
 

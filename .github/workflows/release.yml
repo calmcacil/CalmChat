@@ -1,66 +1,33 @@
-name: Package and release
+name: Release
 
 on:
-    push:
-        tags:
-            - "v*"
-    workflow_dispatch:
-        inputs:
-            tag:
-                description: Release tag to package, for example v2.1.2
-                required: true
-                type: string
+  push:
+    branches: [main]
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.event.inputs.tag || github.ref_name }}
-    cancel-in-progress: false
+  group: release-main
+  cancel-in-progress: false
 
 jobs:
-    release:
-        name: release
-        permissions:
-            contents: write
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        env:
-            GITHUB_OAUTH: ${{ github.token }}
-            RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
-
-        steps:
-          - name: Clone project
-            uses: actions/checkout@v4
-            with:
-                fetch-depth: 0
-                fetch-tags: true
-                ref: ${{ github.event.inputs.tag || github.ref }}
-
-          - name: Validate semantic tag and version sync
-            shell: bash
-            run: |
-                set -euo pipefail
-
-                tag="${RELEASE_TAG}"
-                semver_regex='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
-                if [[ ! "$tag" =~ $semver_regex ]]; then
-                    echo "error: tag '$tag' is not valid semantic versioning" >&2
-                    exit 1
-                fi
-
-                [[ -f VERSION ]] || { echo "error: VERSION is missing" >&2; exit 1; }
-                version_file=$(tr -d '\r\n' < VERSION)
-                tag_version="${tag#v}"
-                if [[ "$version_file" != "$tag_version" ]]; then
-                    echo "error: VERSION '$version_file' does not match tag '$tag_version'" >&2
-                    exit 1
-                fi
-
-          - name: Install Lua 5.1
-            run: sudo apt-get update && sudo apt-get install -y --no-install-recommends lua5.1
-
-          - name: Run static checks
-            run: bash scripts/check-static.sh
-
-          - name: Package and release
-            uses: BigWigsMods/packager@v2
+  release:
+    name: Release Please
+    if: github.ref == 'refs/heads/main' && github.repository == 'calmcacil/CalmChat'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Create release GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v2.2.1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - name: Create or update the release pull request
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v4.4.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
