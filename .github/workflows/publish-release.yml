@@ -1,0 +1,70 @@
+name: Publish release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing immutable release tag to republish, for example v3.1.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: BigWigs package
+    if: >-
+      github.repository == 'calmcacil/CalmChat' &&
+      (github.event_name == 'workflow_dispatch' || github.event.action == 'published')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GITHUB_OAUTH: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Checkout immutable release tag
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate release source and version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          semver='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+          [[ "$RELEASE_TAG" =~ $semver ]] || { echo "::error::Invalid release tag '$RELEASE_TAG'."; exit 1; }
+
+          tag_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
+          head_commit="$(git rev-parse HEAD)"
+          [[ "$tag_commit" == "$head_commit" ]] || { echo "::error::Checkout does not match $RELEASE_TAG."; exit 1; }
+          git merge-base --is-ancestor "$head_commit" origin/main || { echo "::error::$RELEASE_TAG is not contained in main."; exit 1; }
+
+          version="$(tr -d '\r\n' < VERSION)"
+          [[ "v$version" == "$RELEASE_TAG" ]] || { echo "::error::VERSION '$version' does not match $RELEASE_TAG."; exit 1; }
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lua5.1
+      - name: Run static checks
+        run: bash scripts/check-static.sh
+      - name: Build release package
+        uses: BigWigsMods/packager@6d50adb6e8517eefef63f4afb16a6518166a6b28 # v2.5.1
+        with:
+          args: -d
+      - name: Verify release package
+        run: bash scripts/check-package.sh ".release/CalmChat-${RELEASE_TAG}.zip" "${RELEASE_TAG#v}"
+      - name: Publish missing assets and verify reruns
+        run: bash scripts/publish-assets.sh
