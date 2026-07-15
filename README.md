@@ -69,7 +69,7 @@ Use **Apply Chat Layout** in settings (or run `/calmchat`) to apply changes imme
 ## Compatibility
 
 <!-- x-release-please-start-version -->
-**v3.1.0** supports **WoW Midnight 12.0.5** (current Retail)
+**v3.1.1** supports **WoW Midnight 12.0.5** (current Retail)
 <!-- x-release-please-end -->
 
 | Version | Status |

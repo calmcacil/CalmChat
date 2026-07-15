@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.1.1](https://github.com/calmcacil/CalmChat/compare/v3.1.0...v3.1.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* **release:** harden package publication ([d3e7927](https://github.com/calmcacil/CalmChat/commit/d3e79270e3b502a77780ed5ee6e2aaf1b044c20d))
+
+
+### Documentation
+
+* **contributing:** add agent rules and pr checklist template ([#11](https://github.com/calmcacil/CalmChat/issues/11)) ([0a70f02](https://github.com/calmcacil/CalmChat/commit/0a70f021170d7d44b7313514ebd4177ae2a989a4))
+
+
+### CI
+
+* simplify github actions workflows ([#12](https://github.com/calmcacil/CalmChat/issues/12)) ([5ad837e](https://github.com/calmcacil/CalmChat/commit/5ad837ea32ec3b5bc2eaa94a9863aa88cfb936d8))
+* tolerate empty dry-run package artifacts ([#10](https://github.com/calmcacil/CalmChat/issues/10)) ([2ca381c](https://github.com/calmcacil/CalmChat/commit/2ca381cf02a823663f2b47a9a176adf4fea45817))
+
 ## [3.1.0](https://github.com/calmcacil/CalmChat/compare/v3.0.0...v3.1.0) (2026-05-06)
 
 
