@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.1.2](https://github.com/calmcacil/CalmChat/compare/v3.1.1...v3.1.2) (2026-09-21)
+
+
+### CI
+
+* **deps:** bump BigWigsMods/packager in the actions group ([#18](https://github.com/calmcacil/CalmChat/issues/18)) ([5388b4a](https://github.com/calmcacil/CalmChat/commit/5388b4af774af24707a6f4e3bc0bbe77350aa343))
+* **deps:** bump the actions group across 1 directory with 2 updates ([#16](https://github.com/calmcacil/CalmChat/issues/16)) ([cd2bbf2](https://github.com/calmcacil/CalmChat/commit/cd2bbf20a15cc5d0437dd3bab4b4832e965c76c1))
+
 ## [3.1.1](https://github.com/calmcacil/CalmChat/compare/v3.1.0...v3.1.1) (2026-07-15)
 
 
