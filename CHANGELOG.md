@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.1.3](https://github.com/calmcacil/CalmChat/compare/v3.1.2...v3.1.3) (2026-10-19)
+
+
+### CI
+
+* **deps:** bump the actions group across 1 directory with 3 updates ([#30](https://github.com/calmcacil/CalmChat/issues/30)) ([31b7090](https://github.com/calmcacil/CalmChat/commit/31b70906d594942c635bbe4f3b6be12d6c64609f))
+
 ## [3.1.2](https://github.com/calmcacil/CalmChat/compare/v3.1.1...v3.1.2) (2026-09-21)
 
 
